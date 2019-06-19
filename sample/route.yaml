@@ -1,0 +1,21 @@
+route:
+- c: "sample-api/query/{a-zA-Z0-9\-, productName string}"
+  name: "queryProduct"
+- c: "sample-api/download/{0-9, sessionId int64}/{0-9, targetId int64}"
+  name: "downloadProduct"
+- c: "sample-admin-api"
+  route:
+  - c: "product/list"
+    name: "listProduct"
+  strict-prefix-match: "sample-"  # will apply to all matched components at same level
+- c: "sample-debug/text"
+  name: "debugText"
+  strict-prefix-match: "-"  # exempt (use `-` or `_`)
+- c: "sample-debug/json"
+  name: "debugJSON"
+  strict-prefix-match: "-"  # exempt (use `-` or `_`)
+- c: "debug-sample/text"
+  route:
+  - c: "\{{0-9, num int32}\}"
+    name: "debugNumber"
+  strict-prefix-match: "debug"
