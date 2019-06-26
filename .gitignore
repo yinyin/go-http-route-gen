@@ -38,6 +38,6 @@ Icon
 .glide/
 
 /go-http-route-gen
+/get-bit-map
 
 test.yaml
-
