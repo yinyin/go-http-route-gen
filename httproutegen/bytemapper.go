@@ -1,12 +1,39 @@
 package httproutegen
 
 import (
+	"fmt"
 	"log"
 )
+
+func computeBitMapParam(b byte) (mapIndex int, bitOffset uint) {
+	bVal := uint(b)
+	if 0 != (bVal & 64) {
+		mapIndex = 1
+	}
+	bitOffset = bVal & 63
+	return
+}
 
 // ByteMapper record how bytes map to scalar data type for handler arguments
 type ByteMapper struct {
 	bits [2]uint64
+}
+
+// MarshalJSON implements Marshaler interface of encoding/json package.
+func (m *ByteMapper) MarshalJSON() ([]byte, error) {
+	b0, b1 := m.ByteMap()
+	r := fmt.Sprintf("\"0x%016X 0x%016X\"", b0, b1)
+	return []byte(r), nil
+}
+
+// HasByte check if given byte is enabled in this mapper.
+func (m *ByteMapper) HasByte(b byte) bool {
+	if b > 127 {
+		log.Printf("WARN: register byte > 127: %v", b)
+		return false
+	}
+	bIndex, offset := computeBitMapParam(b)
+	return ((m.bits[bIndex] & (1 << offset)) != 0)
 }
 
 func (m *ByteMapper) enableByte(b byte) {
@@ -14,12 +41,7 @@ func (m *ByteMapper) enableByte(b byte) {
 		log.Printf("WARN: register byte > 127: %v", b)
 		return
 	}
-	bVal := uint(b)
-	bIndex := 0
-	if 0 != (bVal & 64) {
-		bIndex = 1
-	}
-	offset := bVal & 63
+	bIndex, offset := computeBitMapParam(b)
 	m.bits[bIndex] = m.bits[bIndex] | (1 << offset)
 }
 
@@ -45,12 +67,7 @@ func (m *ByteMapper) disableByte(b byte) {
 		log.Printf("WARN: register byte > 127: %v", b)
 		return
 	}
-	bVal := uint(b)
-	bIndex := 0
-	if 0 != (bVal & 64) {
-		bIndex = 1
-	}
-	offset := bVal & 63
+	bIndex, offset := computeBitMapParam(b)
 	m.bits[bIndex] = m.bits[bIndex] & (^uint64(1 << offset))
 }
 
