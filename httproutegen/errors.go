@@ -15,3 +15,20 @@ func (e *ErrConflictConfiguration) Error() string {
 	}
 	return leadingText + " have conflict: " + e.Message
 }
+
+// ErrParseComponent represent failure in component parsing.
+type ErrParseComponent struct {
+	Component string
+	Err       error
+}
+
+func newErrParseComponent(componentIdent string, err error) error {
+	return &ErrParseComponent{
+		Component: componentIdent,
+		Err:       err,
+	}
+}
+
+func (e *ErrParseComponent) Error() string {
+	return "ErrParseComponent: component=" + e.Component + ", error=" + e.Err.Error()
+}
