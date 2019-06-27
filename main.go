@@ -20,8 +20,12 @@ func main() {
 		log.Fatalf("ERR: cannot load route configuration [%s]: %v", inputFilePath, err)
 		return
 	}
-	rootFanoutEntry := httproutegen.NewFanoutEntry(rootRouteEntry)
-	if fanoutJSONText, err := json.MarshalIndent(rootFanoutEntry, "", "  "); nil != err {
+	fanoutInstance, err := httproutegen.MakeFanoutInstance(rootRouteEntry)
+	if nil != err {
+		log.Fatalf("ERR: cannot create fanout instance from root route entry: %v", err)
+		return
+	}
+	if fanoutJSONText, err := json.MarshalIndent(fanoutInstance, "", "  "); nil != err {
 		log.Fatalf("ERR: cannot encode root fanout into JSON: %v", err)
 	} else {
 		log.Print(string(fanoutJSONText))
