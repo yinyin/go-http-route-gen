@@ -11,6 +11,7 @@ import (
 
 // RouteEntry represent an entry of route
 type RouteEntry struct {
+	Ident             string        `yaml:"-" json:"component_ident,omitempty"`
 	Component         string        `yaml:"c,omitempty" json:"c,omitempty"`
 	HandlerName       string        `yaml:"handler,omitempty" json:"handler,omitempty"`
 	StrictPrefixMatch string        `yaml:"strict-prefix-match,omitempty" json:"strict_prefix_match,omitempty"`
@@ -44,6 +45,7 @@ func (entry *RouteEntry) verifyConfiguration(parentComponentIdent string) error 
 		return err
 	}
 	componentIdent := entry.makeComponentIdent(parentComponentIdent)
+	entry.Ident = componentIdent
 	if ("" != entry.StrictPrefixMatch) && entry.StrictMatch {
 		return &ErrConflictConfiguration{
 			Component: componentIdent,
