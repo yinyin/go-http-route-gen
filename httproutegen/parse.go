@@ -9,6 +9,10 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+func shouldTrimFromComponent(ch rune) bool {
+	return unicode.IsSpace(ch) || (ch == '/')
+}
+
 // RouteEntry represent an entry of route
 type RouteEntry struct {
 	Ident             string        `yaml:"-" json:"component_ident,omitempty"`
@@ -31,19 +35,22 @@ func (entry *RouteEntry) makeComponentIdent(parentComponentIdent string) string 
 }
 
 func (entry *RouteEntry) cleanupComponent(parentComponentIdent string) error {
-	entry.Component = strings.TrimFunc(entry.Component, func(ch rune) bool {
-		return unicode.IsSpace(ch) || (ch == '/')
-	})
+	entry.Component = strings.TrimFunc(entry.Component, shouldTrimFromComponent)
 	if ("" == entry.Component) && ("" != parentComponentIdent) {
 		return errors.New("empty component: parent=[" + parentComponentIdent + "], handler=[" + entry.HandlerName + "]")
 	}
 	return nil
 }
 
+func (entry *RouteEntry) cleanupStrictPrefixMatch() {
+	entry.StrictPrefixMatch = strings.TrimLeftFunc(entry.StrictPrefixMatch, shouldTrimFromComponent)
+}
+
 func (entry *RouteEntry) verifyConfiguration(parentComponentIdent string) error {
 	if err := entry.cleanupComponent(parentComponentIdent); nil != err {
 		return err
 	}
+	entry.cleanupStrictPrefixMatch()
 	componentIdent := entry.makeComponentIdent(parentComponentIdent)
 	entry.Ident = componentIdent
 	if ("" != entry.StrictPrefixMatch) && entry.StrictMatch {
