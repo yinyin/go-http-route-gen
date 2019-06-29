@@ -5,6 +5,8 @@ import (
 	"log"
 )
 
+const boundaryOfSequenceNumber = 0x9D
+
 // SymbolType represent type of symbol.
 type SymbolType int
 
@@ -23,6 +25,23 @@ type Symbol struct {
 
 	SequenceValue *SequencePart `json:"sequence_value,omitempty"`
 	SequenceIndex int           `json:"sequence_index,omitempty"`
+}
+
+// ByteCode is code to represent the symbol in sequence.
+func (sym *Symbol) ByteCode() byte {
+	switch sym.Type {
+	case SymbolTypeNoop:
+		return 0xFE
+	case SymbolTypeByte:
+		return sym.ByteValue - ' '
+	case SymbolTypeSequence:
+		if sym.SequenceIndex > boundaryOfSequenceNumber {
+			log.Printf("ERROR: sequence index > 0x%02X: %#v", boundaryOfSequenceNumber, sym)
+			return 0xFF
+		}
+		return 0x60 + byte(sym.SequenceIndex)
+	}
+	return 0xFF
 }
 
 // NoopSymbol is an instance of NOOP symbol.
