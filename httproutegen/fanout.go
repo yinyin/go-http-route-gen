@@ -1,12 +1,68 @@
 package httproutegen
 
+import (
+	"strings"
+)
+
 // FanoutEntry map to a RouteEntry to represent progress of route fanout.
 type FanoutEntry struct {
-	Route        *RouteEntry    `json:"route"`
-	Fanouts      []*FanoutEntry `json:"fanouts,omitempty"`
-	Symbols      []Symbol       `json:"symbols,omitempty"`
-	CanFork      bool           `json:"can_fork,omitempty"`
-	CanTerminate bool           `json:"can_terminate,omitempty"`
+	Route             *RouteEntry    `json:"route"`
+	Fanouts           []*FanoutEntry `json:"fanouts,omitempty"`
+	Symbols           []Symbol       `json:"symbols,omitempty"`
+	MinForkIndex      int            `json:"min_fork_at,omitempty"`
+	MinTerminateIndex int            `json:"min_terminate_at,omitempty"`
+}
+
+func (entry *FanoutEntry) updateForkIndex(symbolScope *SymbolScope) error {
+	if entry.Route.StrictMatch {
+		boundIndex := len(entry.Symbols) - 1
+		entry.MinForkIndex = boundIndex
+		entry.MinTerminateIndex = boundIndex
+		return nil
+	}
+	if ("" != entry.Route.StrictPrefixMatch) &&
+		strings.HasPrefix(entry.Route.Component, entry.Route.StrictPrefixMatch) {
+		symbols, err := symbolScope.ParseComponent([]byte(entry.Route.StrictPrefixMatch))
+		if nil != err {
+			return newErrParseComponent(entry.Route.Ident+"::StrictPrefixMatch", err)
+		}
+		boundIndex := len(symbols) - 1
+		if boundIndex > entry.MinForkIndex {
+			entry.MinForkIndex = boundIndex
+		}
+	}
+	minTermIndex := 0
+	for idx, sym := range entry.Symbols {
+		if sym.Type == SymbolTypeSequence {
+			minTermIndex = idx
+		}
+	}
+	if minTermIndex > entry.MinTerminateIndex {
+		entry.MinTerminateIndex = minTermIndex
+	}
+	return entry.updateFanoutForkIndex(symbolScope)
+}
+
+func (entry *FanoutEntry) updateFanoutForkIndex(symbolScope *SymbolScope) error {
+	for _, fanout := range entry.Fanouts {
+		if "" != fanout.Route.StrictPrefixMatch {
+			symbols, err := symbolScope.ParseComponent([]byte(fanout.Route.StrictPrefixMatch))
+			if nil != err {
+				return newErrParseComponent(entry.Route.Ident+"::StrictPrefixMatch(updateFanoutForkIndex)", err)
+			}
+			boundIndex := len(symbols) - 1
+			for _, fo := range entry.Fanouts {
+				if strings.HasPrefix(fo.Route.Component, fanout.Route.StrictPrefixMatch) &&
+					(fo.MinForkIndex < boundIndex) {
+					fo.MinForkIndex = boundIndex
+				}
+			}
+		}
+	}
+	for _, fanout := range entry.Fanouts {
+		fanout.updateForkIndex(symbolScope)
+	}
+	return nil
 }
 
 // MakeFanoutEntry maps given RouteEntry and sub-route entries to FanoutEntry.
@@ -28,7 +84,16 @@ func MakeFanoutEntry(symbolScope *SymbolScope, routeEntry *RouteEntry) (fanoutEn
 		}
 		fanoutEntry.Fanouts = append(fanoutEntry.Fanouts, childFanout)
 	}
+	if err = fanoutEntry.updateForkIndex(symbolScope); nil != err {
+		return nil, err
+	}
 	return
+}
+
+// FanoutFork track status of an expanding branch of fanout.
+type FanoutFork struct {
+	CurrentFanouts     []*FanoutEntry
+	CurrentSymbolIndex int
 }
 
 // FanoutInstance expands the route entries
