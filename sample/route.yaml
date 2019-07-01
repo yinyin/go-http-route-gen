@@ -32,3 +32,10 @@ route:
       \{{0-9, num int32}\}
     handler: "debugNumber"
   strict-prefix-match: "debug"
+
+- c: >
+    unique-path/text/{0-9, num int32}
+  handler: "uniqueText"
+- c: >
+    unique-path/json/{0-9, num int32}
+  handler: "uniqueJSON"
