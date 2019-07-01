@@ -39,5 +39,6 @@ Icon
 
 /go-http-route-gen
 /get-bit-map
+/sample-httpd
 
 test.yaml
