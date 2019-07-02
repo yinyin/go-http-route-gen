@@ -5,6 +5,8 @@ import (
 	"net/http"
 )
 
+// go:generate stringer -type RouteIdent handler_route.go
+
 // RouteIdent define type for route identifier.
 type RouteIdent int
 
@@ -12,6 +14,7 @@ type RouteIdent int
 const (
 	RouteNone RouteIdent = iota
 	RouteIncomplete
+	RouteError
 	RouteSuccess
 	RouteToUniqueText
 	RouteToUniqueJSON
@@ -34,11 +37,24 @@ func extractInt32R09(v string, index, bound int) (int32, int, error) {
 	return result, bound, nil
 }
 
+var errFragmentSmallerThanExpect = errors.New("remaining fragment smaller than expect")
+
+func computeFragmentLiteralDigest(t string, digest uint64, index, bound, length int) (uint64, int, error) {
+	b := index + length
+	if b > bound {
+		return digest, index, errFragmentSmallerThanExpect
+	}
+	for index < b {
+		ch := t[index]
+		index++
+		digest = (digest << 8) | uint64(ch)
+	}
+	return digest, index, nil
+}
+
 func (h *sampleHandler) routeTermUT(w http.ResponseWriter, req *http.Request, index, bound int) (RouteIdent, error) {
 	reqURI := req.RequestURI
-	var num int32
-	var err error
-	num, index, err = extractInt32R09(reqURI, index+5, bound)
+	num, index, err := extractInt32R09(reqURI, index+5, bound)
 	if nil != err {
 		return RouteToUniqueText, err
 	}
@@ -48,9 +64,7 @@ func (h *sampleHandler) routeTermUT(w http.ResponseWriter, req *http.Request, in
 
 func (h *sampleHandler) routeTermUJ(w http.ResponseWriter, req *http.Request, index, bound int) (RouteIdent, error) {
 	reqURI := req.RequestURI
-	var num int32
-	var err error
-	num, index, err = extractInt32R09(reqURI, index+5, bound)
+	num, index, err := extractInt32R09(reqURI, index+5, bound)
 	if nil != err {
 		return RouteToUniqueJSON, err
 	}
@@ -90,5 +104,14 @@ func (h *sampleHandler) routeRequest(w http.ResponseWriter, req *http.Request) (
 	case 'u':
 		return h.routeViaU(w, req, index, bound)
 	}
+	var digest uint64
+	var err error
+	if digest, index, err = computeFragmentLiteralDigest(reqURI, digest, index, bound, 5); nil != err {
+		return RouteError, err
+	} else if digest == 0x0000006465627567 {
+
+	}
+
 	return RouteNone, nil
+
 }
