@@ -6,11 +6,37 @@ import (
 
 // FanoutEntry map to a RouteEntry to represent progress of route fanout.
 type FanoutEntry struct {
+	Serial            int32          `json:"fanout_serial,omitempty"`
 	Route             *RouteEntry    `json:"route"`
 	Fanouts           []*FanoutEntry `json:"fanouts,omitempty"`
 	Symbols           []Symbol       `json:"symbols,omitempty"`
 	MinForkIndex      int            `json:"min_fork_at,omitempty"`
 	MinTerminateIndex int            `json:"min_terminate_at,omitempty"`
+}
+
+// MakeFanoutEntry maps given RouteEntry and sub-route entries to FanoutEntry.
+func MakeFanoutEntry(symbolScope *SymbolScope, routeEntry *RouteEntry) (fanoutEntry *FanoutEntry, err error) {
+	symbols, err := symbolScope.ParseComponent([]byte(routeEntry.Component))
+	if nil != err {
+		err = newErrParseComponent(routeEntry.Ident, err)
+		return
+	}
+	fanoutEntry = &FanoutEntry{
+		Route:   routeEntry,
+		Symbols: symbols,
+	}
+	for _, childRoute := range routeEntry.Routes {
+		childFanout, err := MakeFanoutEntry(symbolScope, childRoute)
+		if nil != err {
+			err = newErrParseComponent(routeEntry.Ident, err)
+			return nil, err
+		}
+		fanoutEntry.Fanouts = append(fanoutEntry.Fanouts, childFanout)
+	}
+	if err = fanoutEntry.updateForkIndex(symbolScope); nil != err {
+		return nil, err
+	}
+	return
 }
 
 func (entry *FanoutEntry) updateForkIndex(symbolScope *SymbolScope) error {
@@ -65,29 +91,14 @@ func (entry *FanoutEntry) updateFanoutForkIndex(symbolScope *SymbolScope) error 
 	return nil
 }
 
-// MakeFanoutEntry maps given RouteEntry and sub-route entries to FanoutEntry.
-func MakeFanoutEntry(symbolScope *SymbolScope, routeEntry *RouteEntry) (fanoutEntry *FanoutEntry, err error) {
-	symbols, err := symbolScope.ParseComponent([]byte(routeEntry.Component))
-	if nil != err {
-		err = newErrParseComponent(routeEntry.Ident, err)
-		return
+// AssignSerial set serial numbers to given entry and all sub-entries.
+func (entry *FanoutEntry) AssignSerial(serialFrom int32) int32 {
+	entry.Serial = serialFrom
+	serialFrom++
+	for _, fo := range entry.Fanouts {
+		serialFrom = fo.AssignSerial(serialFrom)
 	}
-	fanoutEntry = &FanoutEntry{
-		Route:   routeEntry,
-		Symbols: symbols,
-	}
-	for _, childRoute := range routeEntry.Routes {
-		childFanout, err := MakeFanoutEntry(symbolScope, childRoute)
-		if nil != err {
-			err = newErrParseComponent(routeEntry.Ident, err)
-			return nil, err
-		}
-		fanoutEntry.Fanouts = append(fanoutEntry.Fanouts, childFanout)
-	}
-	if err = fanoutEntry.updateForkIndex(symbolScope); nil != err {
-		return nil, err
-	}
-	return
+	return serialFrom
 }
 
 // FanoutFork track status of an expanding branch of fanout.
@@ -108,5 +119,6 @@ func MakeFanoutInstance(rootRouteEntry *RouteEntry) (instance *FanoutInstance, e
 	if instance.RootFanoutEntry, err = MakeFanoutEntry(&instance.InstanceSymbolScope, rootRouteEntry); nil != err {
 		return nil, err
 	}
+	instance.RootFanoutEntry.AssignSerial(1)
 	return
 }
