@@ -1,6 +1,7 @@
 package httproutegen
 
 import (
+	"log"
 	"strings"
 )
 
@@ -10,6 +11,7 @@ type FanoutEntry struct {
 	Route             *RouteEntry    `json:"route"`
 	Fanouts           []*FanoutEntry `json:"fanouts,omitempty"`
 	Symbols           []Symbol       `json:"symbols,omitempty"`
+	TerminateSerials  []int32        `json:"terminate_fanout_serials,omitempty"`
 	MinForkIndex      int            `json:"min_fork_at,omitempty"`
 	MinTerminateIndex int            `json:"min_terminate_at,omitempty"`
 }
@@ -91,6 +93,19 @@ func (entry *FanoutEntry) updateFanoutForkIndex(symbolScope *SymbolScope) error 
 	return nil
 }
 
+func (entry *FanoutEntry) collectTerminateSerials() (result []int32) {
+	if len(entry.Fanouts) == 0 {
+		result = append(result, entry.Serial)
+	} else {
+		for _, fo := range entry.Fanouts {
+			aux := fo.collectTerminateSerials()
+			result = append(result, aux...)
+		}
+		entry.TerminateSerials = result
+	}
+	return
+}
+
 // AssignSerial set serial numbers to given entry and all sub-entries.
 func (entry *FanoutEntry) AssignSerial(serialFrom int32) int32 {
 	entry.Serial = serialFrom
@@ -120,5 +135,6 @@ func MakeFanoutInstance(rootRouteEntry *RouteEntry) (instance *FanoutInstance, e
 		return nil, err
 	}
 	instance.RootFanoutEntry.AssignSerial(1)
+	instance.RootFanoutEntry.collectTerminateSerials()
 	return
 }
