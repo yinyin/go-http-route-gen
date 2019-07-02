@@ -61,12 +61,22 @@ func (entry *RouteEntry) verifyConfiguration(parentComponentIdent string) error 
 			Message:   "partial-strict-match and fully-strict-match cannot co-exist",
 		}
 	}
-	if entry.TrailingSlash && ("" == entry.HandlerName) {
-		return &ErrConflictConfiguration{
-			Component: componentIdent,
-			Config1:   "trailing-slash=true",
-			Config2:   "handler=" + entry.HandlerName,
-			Message:   "enabling trailing-slash on terminate component only",
+	if "" == entry.HandlerName {
+		if entry.TrailingSlash {
+			return &ErrConflictConfiguration{
+				Component: componentIdent,
+				Config1:   "trailing-slash=true",
+				Config2:   "handler=" + entry.HandlerName,
+				Message:   "enabling trailing-slash on terminate component only",
+			}
+		}
+		if 0 == len(entry.Routes) {
+			return &ErrConflictConfiguration{
+				Component: componentIdent,
+				Config1:   "terminate-component=true",
+				Config2:   "handler=" + entry.HandlerName,
+				Message:   "require handler at terminate component",
+			}
 		}
 	}
 	for _, childEntry := range entry.Routes {
