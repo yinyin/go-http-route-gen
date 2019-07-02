@@ -155,6 +155,7 @@ const (
 	LogicTypeUnknown FanoutForkLogicType = iota
 	LogicTypePrefixMatching
 	LogicTypeFuzzyMatching
+	LogicTypeGetParameter
 )
 
 // FanoutFork track status of an expanding branch of fanout.
