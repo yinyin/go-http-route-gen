@@ -39,6 +39,7 @@ Icon
 
 /go-http-route-gen
 /get-bit-map
+/compute-frag-literal
 /sample-httpd
 
 test.yaml
