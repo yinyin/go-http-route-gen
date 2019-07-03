@@ -23,8 +23,9 @@ type Symbol struct {
 
 	ByteValue byte `json:"byte_value,omitempty"`
 
-	SequenceValue *SequencePart `json:"sequence_value,omitempty"`
-	SequenceIndex int           `json:"sequence_index,omitempty"`
+	SequenceValue   *SequencePart `json:"sequence_value,omitempty"`
+	SequenceIndex   int           `json:"sequence_index,omitempty"`
+	SequenceVarName string        `json:"sequence_variable,omitempty"`
 }
 
 // ByteCode is code to represent the symbol in sequence.
@@ -56,11 +57,12 @@ func newByteSymbol(b byte) Symbol {
 	}
 }
 
-func newSequenceSymbol(value *SequencePart, index int) Symbol {
+func newSequenceSymbol(value *SequencePart, index int, variableName string) Symbol {
 	return Symbol{
-		Type:          SymbolTypeSequence,
-		SequenceValue: value,
-		SequenceIndex: index,
+		Type:            SymbolTypeSequence,
+		SequenceValue:   value,
+		SequenceIndex:   index,
+		SequenceVarName: variableName,
 	}
 }
 
@@ -90,8 +92,9 @@ func (scope *SymbolScope) ParseComponent(c []byte) (result []Symbol, err error) 
 				log.Printf("ERROR: failed on set sequence to part: %v", string(c))
 				return nil, err
 			}
+			varName := seqPart.VariableName
 			seqIndex, seqPart := scope.attachSequencePart(seqPart)
-			result = append(result, newSequenceSymbol(seqPart, seqIndex))
+			result = append(result, newSequenceSymbol(seqPart, seqIndex, varName))
 			if nextIdx < len(c) {
 				c = c[nextIdx:]
 			} else {
