@@ -243,6 +243,14 @@ func (p *FanoutLiteralDigestPartition) FeedSymbols(symbols []FanoutSymbol) {
 	p.Digests = updatedSet
 }
 
+// CoveredTerminalCount compute number of covered terminal serials.
+func (p *FanoutLiteralDigestPartition) CoveredTerminalCount() (totalCoveredTerminals int) {
+	for _, digestSet := range p.Digests {
+		totalCoveredTerminals += len(digestSet.TerminateSerials)
+	}
+	return
+}
+
 // FanoutFuzzyTrackSet is collect of fanout share same value for fuzzy tracking.
 type FanoutFuzzyTrackSet struct {
 	TerminateSerials []int32
@@ -322,6 +330,14 @@ func (p *FanoutFuzzyTrackPartition) FeedSymbols(symbols []FanoutSymbol) {
 	}
 	p.FrontU16 = updatedU16Set
 	p.Depth++
+}
+
+// CoveredTerminalCount compute number of covered terminal serials.
+func (p *FanoutFuzzyTrackPartition) CoveredTerminalCount() (totalCoveredTerminals int) {
+	for _, trackSet := range p.BestU8 {
+		totalCoveredTerminals += len(trackSet.TerminateSerials)
+	}
+	return
 }
 
 // FanoutForkLogicType is the logic type of a fanout branch.
@@ -454,10 +470,16 @@ func (fork *FanoutFork) rejectSymbolWithSealPrefixMatching(symbols []FanoutSymbo
 }
 
 func (fork *FanoutFork) feedSymbolsToPrefixMatching(symbols []FanoutSymbol) (reject bool, nextStageForks []*FanoutFork, err error) {
+	totalCoveredTerminals := 0
 	for _, sym := range symbols {
 		if sym.Symbol.Type != SymbolTypeByte {
 			return fork.rejectSymbolWithSealPrefixMatching(symbols)
 		}
+		totalCoveredTerminals += len(sym.Fanout.GetTerminateSerials())
+	}
+	if totalCoveredTerminals < fork.PrefixLiteralDigests.CoveredTerminalCount() {
+		log.Printf("INFO: feedSymbolsToPrefixMatching - covered terminal count shrink: %d <- %d", totalCoveredTerminals, fork.PrefixLiteralDigests.CoveredTerminalCount())
+		return fork.rejectSymbolWithSealPrefixMatching(symbols)
 	}
 	fork.PrefixLiteralDigests.FeedSymbols(symbols)
 	fork.AccumulatedLiteralDigestLength++
@@ -509,10 +531,16 @@ func (fork *FanoutFork) rejectSymbolWithSealFuzzyMatching(symbols []FanoutSymbol
 }
 
 func (fork *FanoutFork) feedSymbolsToFuzzyMatching(symbols []FanoutSymbol) (reject bool, nextStageForks []*FanoutFork, err error) {
+	totalCoveredTerminals := 0
 	for _, sym := range symbols {
 		if sym.Symbol.Type != SymbolTypeByte {
 			return fork.rejectSymbolWithSealFuzzyMatching(symbols)
 		}
+		totalCoveredTerminals += len(sym.Fanout.GetTerminateSerials())
+	}
+	if totalCoveredTerminals < fork.FuzzyTracker.CoveredTerminalCount() {
+		log.Printf("INFO: feedSymbolsToFuzzyMatching - covered terminal count shrink: %d <- %d", totalCoveredTerminals, fork.FuzzyTracker.CoveredTerminalCount())
+		return fork.rejectSymbolWithSealFuzzyMatching(symbols)
 	}
 	fork.FuzzyTracker.FeedSymbols(symbols)
 	return false, nil, nil
