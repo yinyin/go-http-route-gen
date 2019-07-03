@@ -5,7 +5,7 @@ route:
   handler: "downloadProduct"
 - c: 'sample-admin-api'
   route:
-  - c: 'product/list'
+  - c: 'products'
     handler: "listProducts"
   - c: 'product/{0-9, productId int64}'
     handler: "showProduct"
