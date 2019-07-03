@@ -25,6 +25,10 @@ func main() {
 		log.Fatalf("ERR: cannot create fanout instance from root route entry: %v", err)
 		return
 	}
+	if err = fanoutInstance.ExpandFanout(); nil != err {
+		log.Fatalf("ERR: cannot expand fanout instance: %v", err)
+		return
+	}
 	if fanoutJSONText, err := json.MarshalIndent(fanoutInstance, "", "  "); nil != err {
 		log.Fatalf("ERR: cannot encode root fanout into JSON: %v", err)
 	} else {
