@@ -20,6 +20,7 @@ type FanoutEntry struct {
 	Symbols          []Symbol       `json:"symbols,omitempty"`
 	TerminateSerials []int32        `json:"terminate_fanout_serials,omitempty"`
 	MinForkIndex     int            `json:"min_fork_at,omitempty"`
+	ParameterCount int `json:"parameter_count,omitempty"`
 }
 
 // MakeFanoutEntry maps given RouteEntry and sub-route entries to FanoutEntry.
@@ -100,6 +101,19 @@ func (entry *FanoutEntry) collectTerminateSerials() (result []int32) {
 		entry.TerminateSerials = result
 	}
 	return
+}
+
+func (entry *FanoutEntry) updateParameterCount(parentParameterCount int) {
+	currentParameterCount := 0
+	for _, sym := range entry.Symbols {
+		if sym.Type == SymbolTypeSequence {
+			currentParameterCount++
+		}
+	}
+	entry.ParameterCount = parentParameterCount + currentParameterCount
+	for _, fo := range entry.Fanouts {
+		fo.updateParameterCount(entry.ParameterCount)
+	}
 }
 
 // GetTerminateSerials return terminate serials in slice for this fanout entry.
@@ -639,6 +653,7 @@ func MakeFanoutInstance(rootRouteEntry *RouteEntry) (instance *FanoutInstance, e
 	}
 	instance.RootFanoutEntry.AssignSerial(1)
 	instance.RootFanoutEntry.collectTerminateSerials()
+	instance.RootFanoutEntry.updateParameterCount(0)
 	return
 }
 
