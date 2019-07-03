@@ -20,7 +20,7 @@ type FanoutEntry struct {
 	Symbols          []Symbol       `json:"symbols,omitempty"`
 	TerminateSerials []int32        `json:"terminate_fanout_serials,omitempty"`
 	MinForkIndex     int            `json:"min_fork_at,omitempty"`
-	ParameterCount int `json:"parameter_count,omitempty"`
+	ParameterCount   int            `json:"parameter_count,omitempty"`
 }
 
 // MakeFanoutEntry maps given RouteEntry and sub-route entries to FanoutEntry.
@@ -158,6 +158,19 @@ func (entry *FanoutEntry) GetSymbol(depth int) (result []FanoutSymbol) {
 		}
 	}
 	return
+}
+
+// FindFanoutEntryBySerial search for given serial at current entry and child entries.
+func (entry *FanoutEntry) FindFanoutEntryBySerial(serial int32) *FanoutEntry {
+	if entry.Serial == serial {
+		return entry
+	}
+	for _, fo := range entry.Fanouts {
+		if result := fo.FindFanoutEntryBySerial(serial); nil != result {
+			return result
+		}
+	}
+	return nil
 }
 
 func isTerminateSerialsCoveredFanoutSymbol(terminateSerials []int32, symbol FanoutSymbol) bool {
@@ -320,6 +333,7 @@ const (
 	LogicTypePrefixMatching
 	LogicTypeFuzzyMatching
 	LogicTypeGetParameter
+	LogicTypeInvokeHandler
 )
 
 // FanoutFork track status of an expanding branch of fanout.
@@ -341,6 +355,8 @@ type FanoutFork struct {
 	SequenceIndex            int      `json:"sequence_index,omitempty"`
 	SequenceVarName          string   `json:"sequence_variable,omitempty"`
 	AvailableSequenceVarName []string `json:"available_sequence_variable,omitempty"`
+
+	InvokeHandlerFanout *FanoutEntry `json:"invoke_handler,omitempty"`
 }
 
 // Covered check if given fanout-symbol is covered by this fork.
@@ -554,6 +570,54 @@ func (fork *FanoutFork) FeedSymbols(symbols []FanoutSymbol) (reject bool, nextSt
 	return true, nil, fmt.Errorf("unknown logic type: %v", fork.LogicType)
 }
 
+func (fork *FanoutFork) divideThisFork() (hasDivide bool) {
+	if fork.LogicType == LogicTypeFuzzyMatching {
+		nextStageForks := fork.makeNextStageForksFromFuzzyMatching()
+		fork.ChildForks = nextStageForks
+		for _, childFork := range nextStageForks {
+			childFork.ParentFork = fork
+		}
+		return true
+	}
+	return false
+}
+
+func (fork *FanoutFork) sealThisFork(rootFanoutEntry *FanoutEntry) (stopPropagate bool) {
+	if len(fork.CoveredTerminals) != 1 {
+		if !fork.divideThisFork() {
+			log.Fatalf("ERROR: does not terminate with one and only one terminate serial: %#v", fork)
+		}
+		return false
+	}
+	handlerFanout := rootFanoutEntry.FindFanoutEntryBySerial(fork.CoveredTerminals[0])
+	if fork.LogicType == LogicTypeUnknown {
+		fork.LogicType = LogicTypeInvokeHandler
+		fork.InvokeHandlerFanout = handlerFanout
+	} else {
+		aux := FanoutFork{
+			LogicType:           LogicTypeInvokeHandler,
+			CoveredTerminals:    fork.CoveredTerminals,
+			ParentFork:          fork,
+			InvokeHandlerFanout: handlerFanout,
+		}
+		aux.AvailableSequenceVarName = append(aux.AvailableSequenceVarName, fork.AvailableSequenceVarName...)
+		fork.ChildForks = []*FanoutFork{&aux}
+	}
+	return true
+}
+
+// SealTerminateFork mark or create invoke fork for terminate fork.
+func (fork *FanoutFork) SealTerminateFork(rootFanoutEntry *FanoutEntry) {
+	if len(fork.ChildForks) == 0 {
+		if fork.sealThisFork(rootFanoutEntry) {
+			return
+		}
+	}
+	for _, childFork := range fork.ChildForks {
+		childFork.SealTerminateFork(rootFanoutEntry)
+	}
+}
+
 // FindFanoutForkForSymbol search for FanoutFork via symbol coverage.
 func FindFanoutForkForSymbol(forks []*FanoutFork, symbol FanoutSymbol) *FanoutFork {
 	for _, fo := range forks {
@@ -574,9 +638,6 @@ type FanoutForkSlice struct {
 func (s *FanoutForkSlice) AttachParentFork(fork *FanoutFork) {
 	for _, fo := range s.Forks {
 		if fo == fork {
-			continue
-		} else if fo.ParentFork != nil {
-			log.Printf("WARN: attaching fork as parent fork to attached fork: %#v <= %#v", fo, fork)
 			continue
 		}
 		fo.ParentFork = fork
@@ -674,6 +735,7 @@ func (instance *FanoutInstance) ExpandFanout() (err error) {
 		depth++
 		symbols = instance.RootFanoutEntry.GetSymbol(depth)
 	}
+	rootFanoutFork.SealTerminateFork(instance.RootFanoutEntry)
 	instance.RootFanoutFork = rootFanoutFork
 	return nil
 }
