@@ -14,13 +14,12 @@ type FanoutSymbol struct {
 
 // FanoutEntry map to a RouteEntry to represent progress of route fanout.
 type FanoutEntry struct {
-	Serial            int32          `json:"fanout_serial,omitempty"`
-	Route             *RouteEntry    `json:"route"`
-	Fanouts           []*FanoutEntry `json:"fanouts,omitempty"`
-	Symbols           []Symbol       `json:"symbols,omitempty"`
-	TerminateSerials  []int32        `json:"terminate_fanout_serials,omitempty"`
-	MinForkIndex      int            `json:"min_fork_at,omitempty"`
-	MinTerminateIndex int            `json:"min_terminate_at,omitempty"`
+	Serial           int32          `json:"fanout_serial,omitempty"`
+	Route            *RouteEntry    `json:"route"`
+	Fanouts          []*FanoutEntry `json:"fanouts,omitempty"`
+	Symbols          []Symbol       `json:"symbols,omitempty"`
+	TerminateSerials []int32        `json:"terminate_fanout_serials,omitempty"`
+	MinForkIndex     int            `json:"min_fork_at,omitempty"`
 }
 
 // MakeFanoutEntry maps given RouteEntry and sub-route entries to FanoutEntry.
@@ -52,7 +51,6 @@ func (entry *FanoutEntry) updateForkIndex(symbolScope *SymbolScope) error {
 	if entry.Route.StrictMatch {
 		boundIndex := len(entry.Symbols) - 1
 		entry.MinForkIndex = boundIndex
-		entry.MinTerminateIndex = boundIndex
 		return nil
 	}
 	if ("" != entry.Route.StrictPrefixMatch) &&
@@ -65,15 +63,6 @@ func (entry *FanoutEntry) updateForkIndex(symbolScope *SymbolScope) error {
 		if boundIndex > entry.MinForkIndex {
 			entry.MinForkIndex = boundIndex
 		}
-	}
-	minTermIndex := 0
-	for idx, sym := range entry.Symbols {
-		if sym.Type == SymbolTypeSequence {
-			minTermIndex = idx
-		}
-	}
-	if minTermIndex > entry.MinTerminateIndex {
-		entry.MinTerminateIndex = minTermIndex
 	}
 	return entry.updateFanoutForkIndex(symbolScope)
 }
