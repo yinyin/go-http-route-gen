@@ -31,6 +31,11 @@ func main() {
 	}
 	if fanoutJSONText, err := json.MarshalIndent(fanoutInstance, "", "  "); nil != err {
 		log.Fatalf("ERR: cannot encode root fanout into JSON: %v", err)
+	} else if ':' == outputFilePath[0] {
+		log.Printf("Starting HTTP at %v", outputFilePath)
+		err = runHTTPService(outputFilePath, fanoutJSONText)
+		log.Printf("HTTP stopped: %v", err)
+		return
 	} else {
 		log.Print(string(fanoutJSONText))
 	}

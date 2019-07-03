@@ -27,8 +27,10 @@ func parseCommandParam() (inputFilePath, outputFilePath string, err error) {
 		err = ErrOutputFileRequired
 		return
 	}
-	if outputFilePath, err = filepath.Abs(outputFilePath); nil != err {
-		return
+	if ':' != outputFilePath[0] {
+		if outputFilePath, err = filepath.Abs(outputFilePath); nil != err {
+			return
+		}
 	}
 	err = nil
 	return
