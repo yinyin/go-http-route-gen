@@ -17,7 +17,7 @@ func makeCodeConstRouteIdent(routePrefix string, targetHandlerRouteIdents string
 		"\t" + (routePrefix + "Route") + "Incomplete\n" +
 		"\t" + (routePrefix + "Route") + "Error\n" +
 		"\t" + (routePrefix + "Route") + "Success\n" +
-		"\t" + (targetHandlerRouteIdents) + "\n" +
+		(targetHandlerRouteIdents) + "\n" +
 		")\n" +
 		"\n"
 }
@@ -37,7 +37,7 @@ func makeCodeMethodRouteEnterance(routePrefix string, routingLogicCode string) s
 		"\tif reqPathOffset >= reqPathBound {\n" +
 		"\t\treturn " + (routePrefix + "RouteNone") + ", nil\n" +
 		"\t}\n" +
-		"    " + (routingLogicCode) + "\n" +
+		(routingLogicCode) + "\n" +
 		"\treturn " + (routePrefix + "RouteNone") + ", nil\n" +
 		"}\n" +
 		"\n"
@@ -69,7 +69,28 @@ func makeCodeBlockPrefixMatching32Start(routePrefix string, baseOffset int, dige
 
 func makeCodeBlockPrefixMatching32Fork(routePrefix string, digestValue uint32, routingLogicCode string) string {
 	return "else if digest32 == " + ("0x" + strconv.FormatInt(int64(digestValue), 16)) + " {\n" +
-		"    " + (routingLogicCode) + "\n" +
+		(routingLogicCode) + "\n" +
+		"}\n" +
+		"\n"
+}
+
+func makeCodeBlockFuzzyMatchingU8Start(baseOffset int, fuzzyDepth int, fuzzyByteValue uint32, routingLogicCode string) string {
+	return "if ch := reqPath[" + ("reqOffset" + codeTemplateGenIntPlus(baseOffset+fuzzyDepth)) + "]; ch == " + ("0x" + strconv.FormatInt(int64(fuzzyByteValue), 16)) + " {\n" +
+		(routingLogicCode) + "\n" +
+		"}\n" +
+		"\n"
+}
+
+func makeCodeBlockFuzzyMatchingU16Start(baseOffset int, fuzzyDepth int, fuzzyByteValue uint32, routingLogicCode string) string {
+	return "if ch := (uint16(reqPath[" + ("reqOffset" + codeTemplateGenIntPlus(baseOffset+fuzzyDepth-1)) + "]) << 8) | uint16(reqPath[" + ("reqOffset" + codeTemplateGenIntPlus(baseOffset+fuzzyDepth)) + "]); ch == " + ("0x" + strconv.FormatInt(int64(fuzzyByteValue), 16)) + " {\n" +
+		(routingLogicCode) + "\n" +
+		"}\n" +
+		"\n"
+}
+
+func makeCodeBlockFuzzyMatchingU8U16Middle(fuzzyByteValue uint32, routingLogicCode string) string {
+	return "else if ch == " + ("0x" + strconv.FormatInt(int64(fuzzyByteValue), 16)) + " {\n" +
+		(routingLogicCode) + "\n" +
 		"}\n" +
 		"\n"
 }
