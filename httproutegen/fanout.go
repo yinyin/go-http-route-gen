@@ -720,7 +720,7 @@ func (s *FanoutForkSlice) FeedSymbols(symbols []FanoutSymbol) error {
 	var updatedForks []*FanoutFork
 	for idx, fanout := range s.Forks {
 		if len(symbolBuckets[idx]) == 0 {
-			// updatedForks = append(updatedForks, fanout)
+			updatedForks = append(updatedForks, fanout)
 			continue
 		}
 		if reject, nextStageForks, err := fanout.FeedSymbols(symbolBuckets[idx]); nil != err {
