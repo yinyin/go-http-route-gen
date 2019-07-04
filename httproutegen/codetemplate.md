@@ -155,9 +155,9 @@ else if digest32 == DigestValue {
 }
 ```
 
-# Code of Fuzzy Matching Logic (Start)
+# Code of Fuzzy Matching Logic (U8, Start)
 
-* `builder`: `makeCodeBlockFuzzyMatchingU8Start`, `baseOffset int`, `fuzzyDepth int`, `fuzzyByteValue int`, `routingLogicCode string`
+* `builder`: `makeCodeBlockFuzzyMatchingU8Start`, `baseOffset int`, `fuzzyDepth int`, `fuzzyByteValue uint32`, `routingLogicCode string`
 * `preserve-new-line`
 * `replace`:
   - ``` \[(reqOffset)\] ```
@@ -178,9 +178,36 @@ if ch := reqPath[reqOffset]; ch == FuzzyByte {
 }
 ```
 
-# Code of Fuzzy Matching Logic (Middle)
+# Code of Fuzzy Matching Logic (U16, Start)
 
-* `builder`: `makeCodeBlockFuzzyMatchingU8Middle`, `fuzzyByteValue int`, `routingLogicCode string`
+* `builder`: `makeCodeBlockFuzzyMatchingU16Start`, `baseOffset int`, `fuzzyDepth int`, `fuzzyByteValue uint32`, `routingLogicCode string`
+* `preserve-new-line`
+* `replace`:
+  - ``` \[(reqOffset0)\] ```
+  - `$1`
+  - ``` "reqOffset" + codeTemplateGenIntPlus(baseOffset+fuzzyDepth-1) ```
+* `replace`:
+  - ``` \[(reqOffset1)\] ```
+  - `$1`
+  - ``` "reqOffset" + codeTemplateGenIntPlus(baseOffset+fuzzyDepth) ```
+* `replace`:
+  - ``` == (FuzzyByte) ```
+  - `$1`
+  - ``` "0x" + strconv.FormatInt(int64(fuzzyByteValue), 16) ```
+* `replace`:
+  - ``` (\s*InvokeRoutingLogic\(\)) ```
+  - `$1`
+  - ``` routingLogicCode ```
+
+```go
+if ch := (uint16(reqPath[reqOffset0]) << 8) | uint16(reqPath[reqOffset1]); ch == FuzzyByte {
+    InvokeRoutingLogic()
+}
+```
+
+# Code of Fuzzy Matching Logic (U8, U16, Middle)
+
+* `builder`: `makeCodeBlockFuzzyMatchingU8U16Middle`, `fuzzyByteValue uint32`, `routingLogicCode string`
 * `preserve-new-line`
 * `replace`:
   - ``` == (FuzzyByte) ```
