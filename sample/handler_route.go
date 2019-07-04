@@ -37,8 +37,6 @@ func extractInt32R09(v string, index, bound int) (int32, int, error) {
 	return result, bound, nil
 }
 
-var errFragmentSmallerThanExpect = errors.New("remaining fragment smaller than expect")
-
 func computeFragmentLiteralDigest(t string, digest uint64, index, bound, length int) (uint64, int, error) {
 	b := index + length
 	if b > bound {
@@ -50,6 +48,22 @@ func computeFragmentLiteralDigest(t string, digest uint64, index, bound, length 
 		digest = (digest << 8) | uint64(ch)
 	}
 	return digest, index, nil
+}
+
+var errFragmentSmallerThanExpect = errors.New("remaining path fragment smaller than expect")
+
+func computePrefixMatchingDigest32(path string, offset, bound, length int) (uint32, int, error) {
+	b := offset + length
+	if b > bound {
+		return 0, offset, errFragmentSmallerThanExpect
+	}
+	var digest uint32
+	for offset < b {
+		ch := path[offset]
+		offset++
+		digest = (digest << 8) | uint32(ch)
+	}
+	return digest, offset, nil
 }
 
 func (h *sampleHandler) routeTermUT(w http.ResponseWriter, req *http.Request, index, bound int) (RouteIdent, error) {
@@ -87,26 +101,26 @@ func (h *sampleHandler) routeViaU(w http.ResponseWriter, req *http.Request, inde
 }
 
 func (h *sampleHandler) routeRequest(w http.ResponseWriter, req *http.Request) (RouteIdent, error) {
-	reqURI := req.RequestURI
-	index := 0
-	bound := len(reqURI)
-	for index < bound {
-		if reqURI[index] == '/' {
-			index++
+	reqPath := req.URL.Path
+	reqPathOffset := 0
+	reqPathBound := len(reqPath)
+	for reqPathOffset < reqPathBound {
+		if reqPath[reqPathOffset] == '/' {
+			reqPathOffset++
 			break
 		}
-		index++
+		reqPathOffset++
 	}
-	if index >= bound {
+	if reqPathOffset >= reqPathBound {
 		return RouteNone, nil
 	}
-	switch reqURI[index] {
+	switch reqPath[reqPathOffset] {
 	case 'u':
-		return h.routeViaU(w, req, index, bound)
+		return h.routeViaU(w, req, reqPathOffset, reqPathBound)
 	}
 	var digest uint64
 	var err error
-	if digest, index, err = computeFragmentLiteralDigest(reqURI, digest, index, bound, 5); nil != err {
+	if digest, reqPathOffset, err = computeFragmentLiteralDigest(reqPath, digest, reqPathOffset, reqPathBound, 5); nil != err {
 		return RouteError, err
 	} else if digest == 0x0000006465627567 {
 
