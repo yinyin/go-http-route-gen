@@ -145,11 +145,11 @@ func (inst *CodeGenerateInstance) Generate() (err error) {
 		return
 	}
 	var routingCode string
-	if varDefCode, err := inst.writePrefixMatchingDigest32Runtime(); nil != err {
-		return err
-	} else {
-		routingCode += varDefCode
+	var varDefineCode string
+	if varDefineCode, err = inst.writePrefixMatchingDigest32Runtime(); nil != err {
+		return
 	}
+	routingCode += varDefineCode
 	routingCode += cleanupCodeBlock(inst.generateFanoutCode(inst.rootFanoutFork), true)
 	methodCode := makeCodeMethodRouteEnterance(inst.NamePrefix, routingCode)
 	if _, err = inst.fp.WriteString(methodCode); nil != err {
