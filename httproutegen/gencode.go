@@ -69,6 +69,7 @@ func (inst *CodeGenerateInstance) Close() (err error) {
 	return fp.Close()
 }
 
+// addImportModule must invoke before `Generate()` code.
 func (inst *CodeGenerateInstance) addImportModule(moduleName string, escaped bool) {
 	if !escaped {
 		moduleName = strconv.Quote(moduleName)
@@ -99,30 +100,70 @@ func (inst *CodeGenerateInstance) hasPrefixMatching(fanoutFork *FanoutFork) {
 	}
 }
 
+func (inst *CodeGenerateInstance) generateSubForkFanoutCode(fanoutFork *FanoutFork, terminateSerials []int32) (result string) {
+	subForks := fanoutFork.FindChildForkViaTerminateSerials(terminateSerials)
+	for _, subFork := range subForks {
+		if len(subForks) > 1 {
+			result += "// WARN: multiple sub-forks.\n"
+		}
+		result += cleanupCodeBlock(inst.generateFanoutCode(subFork), true)
+	}
+	if "" == result {
+		result = fmt.Sprintf("// WARN: empty sub-fork routing code: %v.\n", terminateSerials)
+	}
+	return
+}
+
 func (inst *CodeGenerateInstance) generatePrefixMatching(fanoutFork *FanoutFork) (result string) {
 	result = makeCodeBlockPrefixMatching32Start(inst.NamePrefix, fanoutFork.BaseOffset, fanoutFork.PrefixLiteralDigests.Depth)
 	for _, digestSet := range fanoutFork.PrefixLiteralDigests.Digests {
-		subForks := fanoutFork.FindChildForkViaTerminateSerials(digestSet.TerminateSerials)
-		subRoutingCode := ""
-		for _, subFork := range subForks {
-			if len(subForks) > 1 {
-				subRoutingCode += "// WARN: multiple sub-forks.\n"
-			}
-			subRoutingCode += cleanupCodeBlock(inst.generateFanoutCode(subFork), true)
-		}
-		if "" == subRoutingCode {
-			subRoutingCode = "// WARN: empty sub-fork routing code.\n"
-		}
+		subRoutingCode := inst.generateSubForkFanoutCode(fanoutFork, digestSet.TerminateSerials)
 		codeText := makeCodeBlockPrefixMatching32Fork(inst.NamePrefix, digestSet.Value, subRoutingCode)
 		result += codeText
 	}
 	return
 }
 
+func (inst *CodeGenerateInstance) generateFuzzyMatchingU8(fanoutFork *FanoutFork) (result string) {
+	for idx, trackSet := range fanoutFork.FuzzyTracker.BestU8 {
+		subRoutingCode := inst.generateSubForkFanoutCode(fanoutFork, trackSet.TerminateSerials)
+		if idx == 0 {
+			result += makeCodeBlockFuzzyMatchingU8Start(fanoutFork.BaseOffset, fanoutFork.FuzzyTracker.BestU8Depth, trackSet.Value, subRoutingCode)
+		} else {
+			result += makeCodeBlockFuzzyMatchingU8U16Middle(trackSet.Value, subRoutingCode)
+		}
+	}
+	return
+}
+
+func (inst *CodeGenerateInstance) generateFuzzyMatchingU16(fanoutFork *FanoutFork) (result string) {
+	for idx, trackSet := range fanoutFork.FuzzyTracker.BestU16 {
+		subRoutingCode := inst.generateSubForkFanoutCode(fanoutFork, trackSet.TerminateSerials)
+		if idx == 0 {
+			result += makeCodeBlockFuzzyMatchingU16Start(fanoutFork.BaseOffset, fanoutFork.FuzzyTracker.BestU16Depth, trackSet.Value, subRoutingCode)
+		} else {
+			result += makeCodeBlockFuzzyMatchingU8U16Middle(trackSet.Value, subRoutingCode)
+		}
+	}
+	return
+}
+
+func (inst *CodeGenerateInstance) generateFuzzyMatching(fanoutFork *FanoutFork) (result string) {
+	switch fanoutFork.FuzzyModeBit {
+	case 8:
+		return inst.generateFuzzyMatchingU8(fanoutFork)
+	case 16:
+		return inst.generateFuzzyMatchingU16(fanoutFork)
+	}
+	return fmt.Sprintf("// ERROR(generateFuzzyMatching): unknown fuzzy mode bit - %d.", fanoutFork.FuzzyModeBit)
+}
+
 func (inst *CodeGenerateInstance) generateFanoutCode(fanoutFork *FanoutFork) (result string) {
 	switch fanoutFork.LogicType {
 	case LogicTypePrefixMatching:
 		return inst.generatePrefixMatching(fanoutFork)
+	case LogicTypeFuzzyMatching:
+		return inst.generateFuzzyMatching(fanoutFork)
 	}
 	return fmt.Sprintf("// ERROR: unknown logic type: %v (%v)", fanoutFork.LogicType, fanoutFork.CoveredTerminals)
 }
