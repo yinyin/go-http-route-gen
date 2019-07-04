@@ -396,6 +396,27 @@ func (fork *FanoutFork) FullyMatch(fanoutSymbol FanoutSymbol) bool {
 	return true
 }
 
+func (fork *FanoutFork) haveCoveredTerminateSerials(terminalSerial []int32) bool {
+	for _, ts := range fork.CoveredTerminals {
+		for _, oth := range terminalSerial {
+			if ts == oth {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// FindChildForkViaTerminateSerials search for child forks covered by given terminate serials.
+func (fork *FanoutFork) FindChildForkViaTerminateSerials(terminalSerial []int32) (result []*FanoutFork) {
+	for _, childFork := range fork.ChildForks {
+		if childFork.haveCoveredTerminateSerials(terminalSerial) {
+			result = append(result, childFork)
+		}
+	}
+	return
+}
+
 func (fork *FanoutFork) chooseLogicType(symbols []FanoutSymbol) FanoutForkLogicType {
 	maxPrefixMatchLength := 0
 	symbolType := SymbolTypeNoop
