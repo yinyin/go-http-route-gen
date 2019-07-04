@@ -14,6 +14,12 @@ Build binary for sample HTTP server.
 go build -o sample-httpd github.com/yinyin/go-http-route-gen/sample
 ```
 
+# Generate Code Template for Code Generator
+
+```sh
+go-literal-code-gen  -in httproutegen/codetemplate.md  -out httproutegen/codetemplate.go
+```
+
 # Generate `String()` Method of `RouteIdent`
 
 This step is optional for user.
