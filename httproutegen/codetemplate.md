@@ -30,7 +30,7 @@ type RouteIdent int
 * `builder`: `makeCodeConstRouteIdent`, `routePrefix string`, `targetHandlerRouteIdents string`
 * `preserve-new-line`
 * `replace`:
-  - ``` (RouteToTargetHandler) ```
+  - ``` (\s*RouteToTargetHandler) ```
   - `$1`
   - ``` targetHandlerRouteIdents ```
 * `replace`:
@@ -66,7 +66,7 @@ const (
   - `$1`
   - ``` routePrefix + "RouteNone" ```
 * `replace`:
-  - ``` (InvokeRoutingLogic\(\)) ```
+  - ``` (\s*InvokeRoutingLogic\(\)) ```
   - `$1`
   - ``` routingLogicCode ```
 
@@ -130,7 +130,6 @@ func computePrefixMatchingDigest32(path string, offset, bound, length int) (uint
   - `$1`
   - ``` strconv.FormatInt(int64(digestLength), 10) ```
 
-
 ```go
 if digest32, reqOffset, err = computePrefixMatchingDigest32(reqPath, reqOffset, reqBound, DigestLen); nil != err {
     return RouteError, err
@@ -146,13 +145,54 @@ if digest32, reqOffset, err = computePrefixMatchingDigest32(reqPath, reqOffset, 
   - `$1`
   - ``` "0x" + strconv.FormatInt(int64(digestValue), 16) ```
 * `replace`:
-  - ``` (InvokeRoutingLogic\(\)) ```
+  - ``` (\s*InvokeRoutingLogic\(\)) ```
   - `$1`
   - ``` routingLogicCode ```
 
-
 ```go
 else if digest32 == DigestValue {
+    InvokeRoutingLogic()
+}
+```
+
+# Code of Fuzzy Matching Logic (Start)
+
+* `builder`: `makeCodeBlockFuzzyMatchingU8Start`, `baseOffset int`, `fuzzyDepth int`, `fuzzyByteValue int`, `routingLogicCode string`
+* `preserve-new-line`
+* `replace`:
+  - ``` \[(reqOffset)\] ```
+  - `$1`
+  - ``` "reqOffset" + codeTemplateGenIntPlus(baseOffset+fuzzyDepth) ```
+* `replace`:
+  - ``` == (FuzzyByte) ```
+  - `$1`
+  - ``` "0x" + strconv.FormatInt(int64(fuzzyByteValue), 16) ```
+* `replace`:
+  - ``` (\s*InvokeRoutingLogic\(\)) ```
+  - `$1`
+  - ``` routingLogicCode ```
+
+```go
+if ch := reqPath[reqOffset]; ch == FuzzyByte {
+    InvokeRoutingLogic()
+}
+```
+
+# Code of Fuzzy Matching Logic (Middle)
+
+* `builder`: `makeCodeBlockFuzzyMatchingU8Middle`, `fuzzyByteValue int`, `routingLogicCode string`
+* `preserve-new-line`
+* `replace`:
+  - ``` == (FuzzyByte) ```
+  - `$1`
+  - ``` "0x" + strconv.FormatInt(int64(fuzzyByteValue), 16) ```
+* `replace`:
+  - ``` (\s*InvokeRoutingLogic\(\)) ```
+  - `$1`
+  - ``` routingLogicCode ```
+
+```go
+else if ch == FuzzyByte {
     InvokeRoutingLogic()
 }
 ```
