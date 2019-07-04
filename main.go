@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	inputFilePath, outputFilePath, err := parseCommandParam()
+	inputFilePath, outputFilePath, packageName, receiverName, handlerTypeName, genNamePrefix, err := parseCommandParam()
 	if nil != err {
 		log.Fatalf("ERR: cannot have required parameters: %v", err)
 		return
@@ -39,4 +39,16 @@ func main() {
 	} else {
 		log.Print(string(fanoutJSONText))
 	}
+	codeGenInst, err := httproutegen.OpenCodeGenerateInstance(outputFilePath, fanoutInstance.RootFanoutFork)
+	if nil != err {
+		log.Fatalf("ERR: cannot open code generation instance: %v", err)
+		return
+	}
+	defer codeGenInst.Close()
+	codeGenInst.PackageName = packageName
+	codeGenInst.ReceiverName = receiverName
+	codeGenInst.HandlerTypeName = handlerTypeName
+	codeGenInst.NamePrefix = genNamePrefix
+	err = codeGenInst.Generate()
+	log.Printf("Code generate stopped: %v", err)
 }
