@@ -144,14 +144,14 @@ func (inst *CodeGenerateInstance) Generate() (err error) {
 	if _, err = inst.fp.WriteString("package " + inst.PackageName + "\n\n"); nil != err {
 		return
 	}
-	var routingCode string
+	var routingLogicCode string
 	var varDefineCode string
 	if varDefineCode, err = inst.writePrefixMatchingDigest32Runtime(); nil != err {
 		return
 	}
-	routingCode += varDefineCode
-	routingCode += cleanupCodeBlock(inst.generateFanoutCode(inst.rootFanoutFork), true)
-	methodCode := makeCodeMethodRouteEnterance(inst.NamePrefix, routingCode)
+	routingLogicCode += varDefineCode
+	routingLogicCode += cleanupCodeBlock(inst.generateFanoutCode(inst.rootFanoutFork), true)
+	methodCode := makeCodeMethodRouteEnterance(inst.NamePrefix, routingLogicCode)
 	if _, err = inst.fp.WriteString(methodCode); nil != err {
 		return
 	}
