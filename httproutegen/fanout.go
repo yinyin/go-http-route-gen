@@ -454,7 +454,7 @@ func (fork *FanoutFork) makeNextStageForksFromPrefixMatching() (nextStageForks [
 	for _, s := range fork.PrefixLiteralDigests.Digests {
 		aux := FanoutFork{
 			AccumulatedLiteralDigestLength: fork.AccumulatedLiteralDigestLength,
-			BaseOffset:                     fork.BaseOffset + fork.PrefixLiteralDigests.Depth,
+			BaseOffset:                     0, // fork.BaseOffset + fork.PrefixLiteralDigests.Depth,
 		}
 		aux.CoveredTerminals = append(aux.CoveredTerminals, s.TerminateSerials...)
 		aux.AvailableSequenceVarName = append(aux.AvailableSequenceVarName, fork.AvailableSequenceVarName...)
