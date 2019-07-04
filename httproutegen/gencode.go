@@ -158,12 +158,27 @@ func (inst *CodeGenerateInstance) generateFuzzyMatching(fanoutFork *FanoutFork) 
 	return fmt.Sprintf("// ERROR(generateFuzzyMatching): unknown fuzzy mode bit - %d.", fanoutFork.FuzzyModeBit)
 }
 
+func (inst *CodeGenerateInstance) generateInvokeHandler(fanoutFork *FanoutFork) (result string) {
+	result = fmt.Sprintf("%s.%s(w, req, reqPathOffset%s",
+		inst.ReceiverName,
+		fanoutFork.InvokeHandlerFanout.Route.HandlerName,
+		codeTemplateGenIntPlus(fanoutFork.BaseOffset))
+	for _, paramName := range fanoutFork.AvailableSequenceVarName {
+		result = result + ", " + paramName
+	}
+	result += ")\n"
+	result += "return 0, nil // TODO: improve route ident."
+	return
+}
+
 func (inst *CodeGenerateInstance) generateFanoutCode(fanoutFork *FanoutFork) (result string) {
 	switch fanoutFork.LogicType {
 	case LogicTypePrefixMatching:
 		return inst.generatePrefixMatching(fanoutFork)
 	case LogicTypeFuzzyMatching:
 		return inst.generateFuzzyMatching(fanoutFork)
+	case LogicTypeInvokeHandler:
+		return inst.generateInvokeHandler(fanoutFork)
 	}
 	return fmt.Sprintf("// ERROR: unknown logic type: %v (%v)", fanoutFork.LogicType, fanoutFork.CoveredTerminals)
 }
