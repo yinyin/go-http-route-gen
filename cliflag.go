@@ -12,13 +12,15 @@ var ErrInputFileRequired = errors.New("Input file is required")
 // ErrOutputFileRequired indicates output file path is missing.
 var ErrOutputFileRequired = errors.New("Output file is required")
 
-func parseCommandParam() (inputFilePath, outputFilePath, packageName, receiverName, handlerTypeName, genNamePrefix string, err error) {
+func parseCommandParam() (inputFilePath, outputFilePath, packageName, receiverName, handlerTypeName, routeMethodName, genNamePrefix string, dumpFanoutContent bool, err error) {
 	flag.StringVar(&inputFilePath, "in", "", "path to input file")
 	flag.StringVar(&outputFilePath, "out", "", "path to output file")
 	flag.StringVar(&packageName, "package", "", "package name")
 	flag.StringVar(&receiverName, "receiver", "h", "name of receiver variable")
 	flag.StringVar(&handlerTypeName, "type", "myHandler", "name of handler type")
+	flag.StringVar(&routeMethodName, "methodName", "routeRequest", "name of routing method function")
 	flag.StringVar(&genNamePrefix, "prefix", "", "prefix to generated type or constant name")
+	flag.BoolVar(&dumpFanoutContent, "dumpFanoutContent", false, "dump fanout data structure content to logging output")
 	flag.Parse()
 	if "" == inputFilePath {
 		err = ErrInputFileRequired

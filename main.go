@@ -8,13 +8,14 @@ import (
 )
 
 func main() {
-	inputFilePath, outputFilePath, packageName, receiverName, handlerTypeName, genNamePrefix, err := parseCommandParam()
+	inputFilePath, outputFilePath, packageName, receiverName, handlerTypeName, routeMethodName, genNamePrefix, dumpFanoutContent, err := parseCommandParam()
 	if nil != err {
 		log.Fatalf("ERR: cannot have required parameters: %v", err)
 		return
 	}
-	log.Printf("Input: %v", inputFilePath)
-	log.Printf("Output: %v", outputFilePath)
+	log.Printf("Input: [%v].", inputFilePath)
+	log.Printf("Output: [%v]", outputFilePath)
+	log.Printf("Route Method: (%s *%s) %s() (%sRouteIdent).", receiverName, handlerTypeName, routeMethodName, genNamePrefix)
 	rootRouteEntry, err := httproutegen.LoadYAML(inputFilePath)
 	if nil != err {
 		log.Fatalf("ERR: cannot load route configuration [%s]: %v", inputFilePath, err)
@@ -36,7 +37,7 @@ func main() {
 		err = runHTTPService(outputFilePath, fanoutJSONText)
 		log.Printf("HTTP stopped: %v", err)
 		return
-	} else {
+	} else if dumpFanoutContent {
 		log.Print(string(fanoutJSONText))
 	}
 	codeGenInst, err := httproutegen.OpenCodeGenerateInstance(outputFilePath, fanoutInstance.RootFanoutFork)
@@ -48,6 +49,7 @@ func main() {
 	codeGenInst.PackageName = packageName
 	codeGenInst.ReceiverName = receiverName
 	codeGenInst.HandlerTypeName = handlerTypeName
+	codeGenInst.RouteMethodName = routeMethodName
 	codeGenInst.NamePrefix = genNamePrefix
 	err = codeGenInst.Generate()
 	log.Printf("Code generate stopped: %v", err)
