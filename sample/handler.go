@@ -13,7 +13,7 @@ func (h *sampleHandler) responseText(w http.ResponseWriter, req *http.Request, m
 	header := w.Header()
 	header.Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	txt := message + ": [" + req.RequestURI + "]\n"
+	txt := message + ": [" + req.URL.Path + "]\n"
 	io.WriteString(w, txt)
 
 }
