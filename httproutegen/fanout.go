@@ -14,13 +14,14 @@ type FanoutSymbol struct {
 
 // FanoutEntry map to a RouteEntry to represent progress of route fanout.
 type FanoutEntry struct {
-	Serial           int32          `json:"fanout_serial,omitempty"`
-	Route            *RouteEntry    `json:"route"`
-	Fanouts          []*FanoutEntry `json:"fanouts,omitempty"`
-	Symbols          []Symbol       `json:"symbols,omitempty"`
-	TerminateSerials []int32        `json:"terminate_fanout_serials,omitempty"`
-	MinForkIndex     int            `json:"min_fork_at,omitempty"`
-	ParameterCount   int            `json:"parameter_count,omitempty"`
+	Serial                 int32          `json:"fanout_serial,omitempty"`
+	Route                  *RouteEntry    `json:"route"`
+	Fanouts                []*FanoutEntry `json:"fanouts,omitempty"`
+	Symbols                []Symbol       `json:"symbols,omitempty"`
+	TerminateSerials       []int32        `json:"terminate_fanout_serials,omitempty"`
+	MatchSymbolDepthStart  int            `json:"match_symbol_start,omitempty"`
+	MatchSymbolDepthFinish int            `json:"match_symbol_finish,omitempty"`
+	ParameterCount         int            `json:"parameter_count,omitempty"`
 }
 
 // MakeFanoutEntry maps given RouteEntry and sub-route entries to FanoutEntry.
@@ -42,52 +43,43 @@ func MakeFanoutEntry(symbolScope *SymbolScope, routeEntry *RouteEntry) (fanoutEn
 		}
 		fanoutEntry.Fanouts = append(fanoutEntry.Fanouts, childFanout)
 	}
-	if err = fanoutEntry.updateForkIndex(symbolScope); nil != err {
+	if err = fanoutEntry.updateMatchSymbolDepth(symbolScope, 0); nil != err {
 		return nil, err
 	}
 	return
 }
 
-func (entry *FanoutEntry) updateForkIndex(symbolScope *SymbolScope) error {
+func (entry *FanoutEntry) updateMatchSymbolDepth(symbolScope *SymbolScope, headingSymbolDepth int) error {
 	if entry.Route.StrictMatch {
-		boundIndex := len(entry.Symbols) - 1
-		entry.MinForkIndex = boundIndex
-		return nil
-	}
-	if ("" != entry.Route.StrictPrefixMatch) &&
+		entry.MatchSymbolDepthStart = headingSymbolDepth
+		entry.MatchSymbolDepthFinish = headingSymbolDepth + len(entry.Symbols) - 1
+	} else if ("" != entry.Route.StrictPrefixMatch) &&
 		strings.HasPrefix(entry.Route.Component, entry.Route.StrictPrefixMatch) {
 		symbols, err := symbolScope.ParseComponent([]byte(entry.Route.StrictPrefixMatch))
 		if nil != err {
 			return newErrParseComponent(entry.Route.Ident+"::StrictPrefixMatch", err)
 		}
-		boundIndex := len(symbols) - 1
-		if boundIndex > entry.MinForkIndex {
-			entry.MinForkIndex = boundIndex
-		}
+		entry.MatchSymbolDepthStart = headingSymbolDepth
+		entry.MatchSymbolDepthFinish = headingSymbolDepth + len(symbols) - 1
+	} else {
+		entry.MatchSymbolDepthStart = -1
+		entry.MatchSymbolDepthFinish = -1
 	}
-	return entry.updateFanoutForkIndex(symbolScope)
-}
-
-func (entry *FanoutEntry) updateFanoutForkIndex(symbolScope *SymbolScope) error {
-	for _, fanout := range entry.Fanouts {
-		if "" != fanout.Route.StrictPrefixMatch {
-			symbols, err := symbolScope.ParseComponent([]byte(fanout.Route.StrictPrefixMatch))
-			if nil != err {
-				return newErrParseComponent(entry.Route.Ident+"::StrictPrefixMatch(updateFanoutForkIndex)", err)
-			}
-			boundIndex := len(symbols) - 1
-			for _, fo := range entry.Fanouts {
-				if strings.HasPrefix(fo.Route.Component, fanout.Route.StrictPrefixMatch) &&
-					(fo.MinForkIndex < boundIndex) {
-					fo.MinForkIndex = boundIndex
-				}
-			}
+	headingSymbolDepth = headingSymbolDepth + len(entry.Symbols)
+	for _, fo := range entry.Fanouts {
+		if err := fo.updateMatchSymbolDepth(symbolScope, headingSymbolDepth); nil != err {
+			return err
 		}
-	}
-	for _, fanout := range entry.Fanouts {
-		fanout.updateForkIndex(symbolScope)
 	}
 	return nil
+}
+
+// WithinMatchingDepthRange check if given symbol depth in the range of strict matching.
+func (entry *FanoutEntry) WithinMatchingDepthRange(symbolDepth int) bool {
+	if (entry.MatchSymbolDepthStart <= symbolDepth) && (entry.MatchSymbolDepthFinish >= symbolDepth) {
+		return true
+	}
+	return false
 }
 
 func (entry *FanoutEntry) collectTerminateSerials() (result []int32) {
@@ -361,9 +353,8 @@ type FanoutFork struct {
 
 	BaseOffset int `json:"base_offset"`
 
-	MaxPrefixMatchLength           int `json:"max_prefix_match_len,omitempty"`
-	PrefixLiteralDigests           FanoutLiteralDigestPartition
-	AccumulatedLiteralDigestLength int `json:"accumulated_literal_digest_len,omitempty"`
+	MaxMatchingDepth     int `json:"max_matching_depth,omitempty"`
+	PrefixLiteralDigests FanoutLiteralDigestPartition
 
 	FuzzyTracker FanoutFuzzyTrackPartition
 	FuzzyModeBit int `json:"fuzzy_mode_bit,omitempty"`
@@ -417,8 +408,8 @@ func (fork *FanoutFork) FindChildForkViaTerminateSerials(terminalSerial []int32)
 	return
 }
 
-func (fork *FanoutFork) chooseLogicType(symbols []FanoutSymbol) FanoutForkLogicType {
-	maxPrefixMatchLength := 0
+func (fork *FanoutFork) chooseLogicType(symbols []FanoutSymbol, symbolDepth int) FanoutForkLogicType {
+	maxMatchingDepth := 0
 	symbolType := SymbolTypeNoop
 	for _, sym := range symbols {
 		if sym.Symbol.Type != symbolType {
@@ -428,21 +419,20 @@ func (fork *FanoutFork) chooseLogicType(symbols []FanoutSymbol) FanoutForkLogicT
 				log.Fatalf("mixed symbol type: %#v", symbols)
 			}
 		}
-		if sym.Fanout.MinForkIndex > maxPrefixMatchLength {
-			maxPrefixMatchLength = sym.Fanout.MinForkIndex
+		if (maxMatchingDepth < sym.Fanout.MatchSymbolDepthFinish) && sym.Fanout.WithinMatchingDepthRange(symbolDepth) {
+			maxMatchingDepth = sym.Fanout.MatchSymbolDepthFinish
 		}
 	}
-	if symbolType == SymbolTypeNoop {
+	switch symbolType {
+	case SymbolTypeNoop:
 		log.Fatalf("not reaching usable logic type: %#v", symbols)
-	}
-	if symbolType == SymbolTypeSequence {
-		return LogicTypeGetParameter
-	}
-	if maxPrefixMatchLength > fork.AccumulatedLiteralDigestLength {
-		if fork.MaxPrefixMatchLength < maxPrefixMatchLength {
-			fork.MaxPrefixMatchLength = maxPrefixMatchLength
+	case SymbolTypeByte:
+		if maxMatchingDepth > 0 {
+			fork.MaxMatchingDepth = maxMatchingDepth
+			return LogicTypePrefixMatching
 		}
-		return LogicTypePrefixMatching
+	case SymbolTypeSequence:
+		return LogicTypeGetParameter
 	}
 	if len(symbols) == 1 {
 		return LogicTypeUnknown
@@ -453,8 +443,7 @@ func (fork *FanoutFork) chooseLogicType(symbols []FanoutSymbol) FanoutForkLogicT
 func (fork *FanoutFork) makeNextStageForksFromPrefixMatching() (nextStageForks []*FanoutFork) {
 	for _, s := range fork.PrefixLiteralDigests.Digests {
 		aux := FanoutFork{
-			AccumulatedLiteralDigestLength: fork.AccumulatedLiteralDigestLength,
-			BaseOffset:                     0, // fork.BaseOffset + fork.PrefixLiteralDigests.Depth,
+			BaseOffset: 0, // fork.BaseOffset + fork.PrefixLiteralDigests.Depth,
 		}
 		aux.CoveredTerminals = append(aux.CoveredTerminals, s.TerminateSerials...)
 		aux.AvailableSequenceVarName = append(aux.AvailableSequenceVarName, fork.AvailableSequenceVarName...)
@@ -468,17 +457,6 @@ func (fork *FanoutFork) rejectSymbolWithSealPrefixMatching(symbols []FanoutSymbo
 	nextStageForks = fork.makeNextStageForksFromPrefixMatching()
 	for _, sym := range symbols {
 		switch sym.Symbol.Type {
-		case SymbolTypeByte:
-			fo := FindFanoutForkForSymbol(nextStageForks, sym)
-			minForkIndex := sym.Fanout.MinForkIndex
-			if (minForkIndex > fo.AccumulatedLiteralDigestLength) && (minForkIndex > fo.MaxPrefixMatchLength) {
-				fo.MaxPrefixMatchLength = minForkIndex
-				if fo.LogicType == LogicTypeUnknown {
-					fo.LogicType = LogicTypePrefixMatching
-				} else {
-					err = fmt.Errorf("prefix matching not satisfied but fork is not prefix matching: %#v, %v", sym.Fanout, fo.LogicType)
-				}
-			}
 		case SymbolTypeSequence:
 			fo := FindFanoutForkForSymbol(nextStageForks, sym)
 			if !fo.FullyMatch(sym) {
@@ -490,7 +468,7 @@ func (fork *FanoutFork) rejectSymbolWithSealPrefixMatching(symbols []FanoutSymbo
 	return
 }
 
-func (fork *FanoutFork) feedSymbolsToPrefixMatching(symbols []FanoutSymbol) (reject bool, nextStageForks []*FanoutFork, err error) {
+func (fork *FanoutFork) feedSymbolsToPrefixMatching(symbols []FanoutSymbol, symbolDepth int) (reject bool, nextStageForks []*FanoutFork, err error) {
 	totalCoveredTerminals := 0
 	for _, sym := range symbols {
 		if sym.Symbol.Type != SymbolTypeByte {
@@ -503,8 +481,7 @@ func (fork *FanoutFork) feedSymbolsToPrefixMatching(symbols []FanoutSymbol) (rej
 		return fork.rejectSymbolWithSealPrefixMatching(symbols)
 	}
 	fork.PrefixLiteralDigests.FeedSymbols(symbols)
-	fork.AccumulatedLiteralDigestLength++
-	if (fork.AccumulatedLiteralDigestLength >= fork.MaxPrefixMatchLength) || (0 == (fork.AccumulatedLiteralDigestLength % 4)) {
+	if (fork.MaxMatchingDepth == symbolDepth) || (fork.PrefixLiteralDigests.Depth == 4) {
 		return false, fork.makeNextStageForksFromPrefixMatching(), nil
 	}
 	return false, nil, nil
@@ -551,10 +528,10 @@ func (fork *FanoutFork) rejectSymbolWithSealFuzzyMatching(symbols []FanoutSymbol
 	return
 }
 
-func (fork *FanoutFork) feedSymbolsToFuzzyMatching(symbols []FanoutSymbol) (reject bool, nextStageForks []*FanoutFork, err error) {
+func (fork *FanoutFork) feedSymbolsToFuzzyMatching(symbols []FanoutSymbol, symbolDepth int) (reject bool, nextStageForks []*FanoutFork, err error) {
 	totalCoveredTerminals := 0
 	for _, sym := range symbols {
-		if sym.Symbol.Type != SymbolTypeByte {
+		if (sym.Symbol.Type != SymbolTypeByte) || sym.Fanout.WithinMatchingDepthRange(symbolDepth) {
 			return fork.rejectSymbolWithSealFuzzyMatching(symbols)
 		}
 		totalCoveredTerminals += len(sym.Fanout.GetTerminateSerials())
@@ -601,15 +578,15 @@ func (fork *FanoutFork) feedSymbolsToGetParameter(symbols []FanoutSymbol) (rejec
 }
 
 // FeedSymbols get symbols from fanouts and update logic state for code generation.
-func (fork *FanoutFork) FeedSymbols(symbols []FanoutSymbol) (reject bool, nextStageForks []*FanoutFork, err error) {
+func (fork *FanoutFork) FeedSymbols(symbols []FanoutSymbol, symbolDepth int) (reject bool, nextStageForks []*FanoutFork, err error) {
 	if LogicTypeUnknown == fork.LogicType {
-		fork.LogicType = fork.chooseLogicType(symbols)
+		fork.LogicType = fork.chooseLogicType(symbols, symbolDepth)
 	}
 	switch fork.LogicType {
 	case LogicTypePrefixMatching:
-		return fork.feedSymbolsToPrefixMatching(symbols)
+		return fork.feedSymbolsToPrefixMatching(symbols, symbolDepth)
 	case LogicTypeFuzzyMatching:
-		return fork.feedSymbolsToFuzzyMatching(symbols)
+		return fork.feedSymbolsToFuzzyMatching(symbols, symbolDepth)
 	case LogicTypeGetParameter:
 		return fork.feedSymbolsToGetParameter(symbols)
 	case LogicTypeUnknown:
@@ -689,6 +666,12 @@ func (s *FanoutForkSlice) AttachParentFork(fork *FanoutFork) {
 		if fo == fork {
 			continue
 		}
+		if fo.ParentFork == fork {
+			continue
+		}
+		if fo.ParentFork != nil {
+			log.Printf("parent fork existed: %v", fo)
+		}
 		fo.ParentFork = fork
 		fork.ChildForks = append(fork.ChildForks, fo)
 	}
@@ -715,7 +698,7 @@ func (s *FanoutForkSlice) distributeSymbols(symbols []FanoutSymbol) [][]FanoutSy
 
 // FeedSymbols feed symbols into covered FanoutFork.
 // The slice will be update if fork is forked further.
-func (s *FanoutForkSlice) FeedSymbols(symbols []FanoutSymbol) error {
+func (s *FanoutForkSlice) FeedSymbols(symbols []FanoutSymbol, symbolDepth int) error {
 	symbolBuckets := s.distributeSymbols(symbols)
 	var updatedForks []*FanoutFork
 	for idx, fanout := range s.Forks {
@@ -723,18 +706,18 @@ func (s *FanoutForkSlice) FeedSymbols(symbols []FanoutSymbol) error {
 			updatedForks = append(updatedForks, fanout)
 			continue
 		}
-		if reject, nextStageForks, err := fanout.FeedSymbols(symbolBuckets[idx]); nil != err {
+		if reject, nextStageForks, err := fanout.FeedSymbols(symbolBuckets[idx], symbolDepth); nil != err {
 			return err
 		} else if len(nextStageForks) > 0 {
 			subSlice := FanoutForkSlice{
 				Forks: nextStageForks,
 			}
+			subSlice.AttachParentFork(fanout)
 			if reject {
-				if err = subSlice.FeedSymbols(symbolBuckets[idx]); nil != err {
+				if err = subSlice.FeedSymbols(symbolBuckets[idx], symbolDepth); nil != err {
 					return err
 				}
 			}
-			subSlice.AttachParentFork(fanout)
 			updatedForks = append(updatedForks, subSlice.Forks...)
 		} else {
 			if reject {
@@ -778,7 +761,7 @@ func (instance *FanoutInstance) ExpandFanout() (err error) {
 	depth := 0
 	symbols := instance.RootFanoutEntry.GetSymbol(depth)
 	for len(symbols) > 0 {
-		if err = fanoutForks.FeedSymbols(symbols); nil != err {
+		if err = fanoutForks.FeedSymbols(symbols, depth); nil != err {
 			return
 		}
 		depth++
