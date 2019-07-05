@@ -56,8 +56,16 @@ const (
 
 # Route Method
 
-* `builder`: `makeCodeMethodRouteEnterance`, `routePrefix string`, `routingLogicCode string`
+* `builder`: `makeCodeMethodRouteEnterance`, `routePrefix string`, `receiverName string`, `handlerTypeName string`, `routeMethodName string`, `routingLogicCode string`
 * `preserve-new-line`
+* `replace`:
+  - ``` \((h) \*(localHandler)\) (routeRequest)\( ```
+  - `$1`
+  - ``` receiverName ```
+  - `$2`
+  - ``` handlerTypeName ```
+  - `$3`
+  - ``` routeMethodName ```
 * `replace`:
   - ``` (RouteIdent) ```
   - `$1`
