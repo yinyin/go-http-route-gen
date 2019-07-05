@@ -43,6 +43,7 @@ type CodeGenerateInstance struct {
 	NamePrefix      string
 
 	ImportModules []string
+	HandlerNames  []string
 
 	UsePrefixMatching bool
 }
@@ -58,6 +59,7 @@ func OpenCodeGenerateInstance(codeFilePath string, rootFanoutFork *FanoutFork) (
 		rootFanoutFork: rootFanoutFork,
 	}
 	inst.hasPrefixMatching(rootFanoutFork)
+	inst.collectHandlerNames(rootFanoutFork)
 	inst.addImportModule("net/http", false)
 	return
 }
@@ -82,6 +84,16 @@ func (inst *CodeGenerateInstance) addImportModule(moduleName string, escaped boo
 	inst.ImportModules = append(inst.ImportModules, moduleName)
 }
 
+// addHandlerName must invoke before `Generate()` code.
+func (inst *CodeGenerateInstance) addHandlerName(handlerName string) {
+	for _, hndName := range inst.HandlerNames {
+		if hndName == handlerName {
+			return
+		}
+	}
+	inst.HandlerNames = append(inst.HandlerNames, handlerName)
+}
+
 func (inst *CodeGenerateInstance) validateConfiguration() (err error) {
 	if "" == inst.PackageName {
 		return errors.New("package name is required")
@@ -98,6 +110,30 @@ func (inst *CodeGenerateInstance) hasPrefixMatching(fanoutFork *FanoutFork) {
 	for _, childFork := range fanoutFork.ChildForks {
 		inst.hasPrefixMatching(childFork)
 	}
+}
+
+func (inst *CodeGenerateInstance) collectHandlerNames(fanoutFork *FanoutFork) {
+	if fanoutFork.LogicType == LogicTypeInvokeHandler {
+		inst.addHandlerName(fanoutFork.InvokeHandlerFanout.Route.HandlerName)
+		return
+	}
+	for _, childFork := range fanoutFork.ChildForks {
+		inst.collectHandlerNames(childFork)
+	}
+}
+
+func (inst *CodeGenerateInstance) makeRouteIdentName(handlerName string) string {
+	hnd := []rune(handlerName)
+	hnd[0] = unicode.ToTitle(hnd[0])
+	return inst.NamePrefix + "RouteTo" + string(hnd)
+}
+
+func (inst *CodeGenerateInstance) generateRouteIdentDefinitionListCode() string {
+	var routeIdentNames []string
+	for _, handlerName := range inst.HandlerNames {
+		routeIdentNames = append(routeIdentNames, inst.makeRouteIdentName(handlerName))
+	}
+	return makeCodeConstRouteIdent(inst.NamePrefix, routeIdentNames)
 }
 
 func (inst *CodeGenerateInstance) generateSubForkFanoutCode(fanoutFork *FanoutFork, terminateSerials []int32) (result string) {
@@ -159,15 +195,16 @@ func (inst *CodeGenerateInstance) generateFuzzyMatching(fanoutFork *FanoutFork) 
 }
 
 func (inst *CodeGenerateInstance) generateInvokeHandler(fanoutFork *FanoutFork) (result string) {
+	handlerName := fanoutFork.InvokeHandlerFanout.Route.HandlerName
 	result = fmt.Sprintf("%s.%s(w, req, reqPathOffset%s",
 		inst.ReceiverName,
-		fanoutFork.InvokeHandlerFanout.Route.HandlerName,
+		handlerName,
 		codeTemplateGenIntPlus(fanoutFork.BaseOffset))
 	for _, paramName := range fanoutFork.AvailableSequenceVarName {
 		result = result + ", " + paramName
 	}
 	result += ")\n"
-	result += "return 0, nil // TODO: improve route ident."
+	result += "return " + inst.makeRouteIdentName(handlerName) + ", nil"
 	return
 }
 
@@ -181,6 +218,16 @@ func (inst *CodeGenerateInstance) generateFanoutCode(fanoutFork *FanoutFork) (re
 		return inst.generateInvokeHandler(fanoutFork)
 	}
 	return fmt.Sprintf("// ERROR: unknown logic type: %v (%v)", fanoutFork.LogicType, fanoutFork.CoveredTerminals)
+}
+
+func (inst *CodeGenerateInstance) writeRouteIdentConstants() (err error) {
+	codeText := makeCodeTypeRouteIdent(inst.NamePrefix)
+	if _, err = inst.fp.WriteString(codeText); nil != err {
+		return
+	}
+	codeText = inst.generateRouteIdentDefinitionListCode()
+	_, err = inst.fp.WriteString(codeText)
+	return
 }
 
 func (inst *CodeGenerateInstance) writePrefixMatchingDigest32Runtime() (routingVarCode string, err error) {
@@ -198,6 +245,9 @@ func (inst *CodeGenerateInstance) Generate() (err error) {
 		return
 	}
 	if _, err = inst.fp.WriteString("package " + inst.PackageName + "\n\n"); nil != err {
+		return
+	}
+	if err = inst.writeRouteIdentConstants(); nil != err {
 		return
 	}
 	var routingLogicCode string
