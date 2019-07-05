@@ -23,8 +23,8 @@ func makeCodeConstRouteIdent(routePrefix string, targetHandlerRouteIdents []stri
 		"\n"
 }
 
-func makeCodeMethodRouteEnterance(routePrefix string, routingLogicCode string) string {
-	return "func (h *localHandler) routeRequest(w http.ResponseWriter, req *http.Request) (" + (routePrefix + "RouteIdent") + ", error) {\n" +
+func makeCodeMethodRouteEnterance(routePrefix string, receiverName string, handlerTypeName string, routeMethodName string, routingLogicCode string) string {
+	return "func (" + (receiverName) + " *" + (handlerTypeName) + ") " + (routeMethodName) + "(w http.ResponseWriter, req *http.Request) (" + (routePrefix + "RouteIdent") + ", error) {\n" +
 		"\treqPath := req.URL.Path\n" +
 		"\treqPathOffset := 0\n" +
 		"\treqPathBound := len(reqPath)\n" +
