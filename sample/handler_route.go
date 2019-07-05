@@ -22,6 +22,22 @@ const (
 
 var errEmptyComponentPart = errors.New("component part is empty")
 
+func extractStringR00(v string, index, bound int) (string, int, error) {
+	var buf []byte
+	for idx := index; idx < bound; idx++ {
+		ch := v[idx]
+		switch {
+		case (ch >= 'a') && (ch <= 'z'):
+			fallthrough
+		case ch == '-':
+			buf = append(buf, ch)
+		default:
+			return string(buf), idx, nil
+		}
+	}
+	return string(buf), bound, nil
+}
+
 func extractInt32R09(v string, index, bound int) (int32, int, error) {
 	var result int32
 	for idx := index; idx < bound; idx++ {
