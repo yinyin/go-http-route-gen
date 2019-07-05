@@ -40,6 +40,7 @@ type CodeGenerateInstance struct {
 	PackageName     string
 	ReceiverName    string
 	HandlerTypeName string
+	RouteMethodName string
 	NamePrefix      string
 
 	ImportModules []string
@@ -257,7 +258,7 @@ func (inst *CodeGenerateInstance) Generate() (err error) {
 	}
 	routingLogicCode += varDefineCode
 	routingLogicCode += cleanupCodeBlock(inst.generateFanoutCode(inst.rootFanoutFork), true)
-	methodCode := makeCodeMethodRouteEnterance(inst.NamePrefix, routingLogicCode)
+	methodCode := makeCodeMethodRouteEnterance(inst.NamePrefix, inst.ReceiverName, inst.HandlerTypeName, inst.RouteMethodName, routingLogicCode)
 	if _, err = inst.fp.WriteString(methodCode); nil != err {
 		return
 	}
