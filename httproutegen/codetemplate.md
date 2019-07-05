@@ -7,6 +7,7 @@ package httproutegen
 
 import (
     "strconv"
+    "strings"
 )
 
 ```
@@ -27,12 +28,12 @@ type RouteIdent int
 
 # Default Route Idents
 
-* `builder`: `makeCodeConstRouteIdent`, `routePrefix string`, `targetHandlerRouteIdents string`
+* `builder`: `makeCodeConstRouteIdent`, `routePrefix string`, `targetHandlerRouteIdents []string`
 * `preserve-new-line`
 * `replace`:
   - ``` (\s*RouteToTargetHandler) ```
   - `$1`
-  - ``` targetHandlerRouteIdents ```
+  - ``` strings.Join(targetHandlerRouteIdents, "\n") ```
 * `replace`:
   - ``` (RouteNone RouteIdent) ```
   - `$1`
@@ -118,9 +119,9 @@ func computePrefixMatchingDigest32(path string, offset, bound, length int) (uint
 * `builder`: `makeCodeBlockPrefixMatching32Start`, `routePrefix string`, `baseOffset int`, `digestLength int`
 * `preserve-new-line`
 * `replace`:
-  - ``` reqPath, (reqOffset), reqBound ```
+  - ``` reqPath, (reqPathOffset), reqPathBound ```
   - `$1`
-  - ``` "reqOffset" + codeTemplateGenIntPlus(baseOffset) ```
+  - ``` "reqPathOffset" + codeTemplateGenIntPlus(baseOffset) ```
 * `replace`:
   - ``` (RouteError) ```
   - `$1`
@@ -131,7 +132,7 @@ func computePrefixMatchingDigest32(path string, offset, bound, length int) (uint
   - ``` strconv.FormatInt(int64(digestLength), 10) ```
 
 ```go
-if digest32, reqOffset, err = computePrefixMatchingDigest32(reqPath, reqOffset, reqBound, DigestLen); nil != err {
+if digest32, reqPathOffset, err = computePrefixMatchingDigest32(reqPath, reqPathOffset, reqPathBound, DigestLen); nil != err {
     return RouteError, err
 }
 ```
@@ -160,9 +161,9 @@ else if digest32 == DigestValue {
 * `builder`: `makeCodeBlockFuzzyMatchingU8Start`, `baseOffset int`, `fuzzyDepth int`, `fuzzyByteValue uint32`, `routingLogicCode string`
 * `preserve-new-line`
 * `replace`:
-  - ``` \[(reqOffset)\] ```
+  - ``` \[(reqPathOffset)\] ```
   - `$1`
-  - ``` "reqOffset" + codeTemplateGenIntPlus(baseOffset+fuzzyDepth) ```
+  - ``` "reqPathOffset" + codeTemplateGenIntPlus(baseOffset+fuzzyDepth) ```
 * `replace`:
   - ``` == (FuzzyByte) ```
   - `$1`
@@ -173,7 +174,7 @@ else if digest32 == DigestValue {
   - ``` routingLogicCode ```
 
 ```go
-if ch := reqPath[reqOffset]; ch == FuzzyByte {
+if ch := reqPath[reqPathOffset]; ch == FuzzyByte {
     InvokeRoutingLogic()
 }
 ```
@@ -183,13 +184,13 @@ if ch := reqPath[reqOffset]; ch == FuzzyByte {
 * `builder`: `makeCodeBlockFuzzyMatchingU16Start`, `baseOffset int`, `fuzzyDepth int`, `fuzzyByteValue uint32`, `routingLogicCode string`
 * `preserve-new-line`
 * `replace`:
-  - ``` \[(reqOffset0)\] ```
+  - ``` \[(reqPathOffset0)\] ```
   - `$1`
-  - ``` "reqOffset" + codeTemplateGenIntPlus(baseOffset+fuzzyDepth-1) ```
+  - ``` "reqPathOffset" + codeTemplateGenIntPlus(baseOffset+fuzzyDepth-1) ```
 * `replace`:
-  - ``` \[(reqOffset1)\] ```
+  - ``` \[(reqPathOffset1)\] ```
   - `$1`
-  - ``` "reqOffset" + codeTemplateGenIntPlus(baseOffset+fuzzyDepth) ```
+  - ``` "reqPathOffset" + codeTemplateGenIntPlus(baseOffset+fuzzyDepth) ```
 * `replace`:
   - ``` == (FuzzyByte) ```
   - `$1`
@@ -200,7 +201,7 @@ if ch := reqPath[reqOffset]; ch == FuzzyByte {
   - ``` routingLogicCode ```
 
 ```go
-if ch := (uint16(reqPath[reqOffset0]) << 8) | uint16(reqPath[reqOffset1]); ch == FuzzyByte {
+if ch := (uint16(reqPath[reqPathOffset0]) << 8) | uint16(reqPath[reqPathOffset1]); ch == FuzzyByte {
     InvokeRoutingLogic()
 }
 ```
