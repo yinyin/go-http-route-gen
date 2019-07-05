@@ -38,6 +38,18 @@ func extractStringR00(v string, index, bound int) (string, int, error) {
 	return string(buf), bound, nil
 }
 
+func extractStringR01NoSlash(v string, index, bound int) (string, int, error) {
+	var buf []byte
+	for idx := index; idx < bound; idx++ {
+		if ch := v[idx]; ch != '/' {
+			buf = append(buf, ch)
+			continue
+		}
+		return string(buf), idx, nil
+	}
+	return string(buf), bound, nil
+}
+
 func extractInt32R09(v string, index, bound int) (int32, int, error) {
 	var result int32
 	for idx := index; idx < bound; idx++ {
