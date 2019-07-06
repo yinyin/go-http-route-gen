@@ -38,9 +38,9 @@ func extractStringR00(v string, index, bound int) (string, int, error) {
 	return string(buf), bound, nil
 }
 
-func extractStringR01NoSlash(v string, index, bound int) (string, int, error) {
+func extractStringBuiltInR01NoSlash(v string, offset, bound int) (string, int, error) {
 	var buf []byte
-	for idx := index; idx < bound; idx++ {
+	for idx := offset; idx < bound; idx++ {
 		if ch := v[idx]; ch != '/' {
 			buf = append(buf, ch)
 			continue
@@ -48,6 +48,53 @@ func extractStringR01NoSlash(v string, index, bound int) (string, int, error) {
 		return string(buf), idx, nil
 	}
 	return string(buf), bound, nil
+}
+
+var errFragmentSmallerThanExpect = errors.New("remaining path fragment smaller than expect")
+
+func extractInt32BuiltInR01(v string, offset, bound int) (int32, int, error) {
+	if bound <= offset {
+		return 0, offset, errFragmentSmallerThanExpect
+	}
+	negative := false
+	if ch := v[offset]; '-' == ch {
+		negative = true
+		offset++
+	}
+	var result int32
+	for idx := offset; idx < bound; idx++ {
+		ch := v[idx]
+		digit := (ch & 0x0F)
+		if ((ch & 0xF0) == 0x30) && ((1023 & (1 << digit)) != 0) {
+			result = result*10 + int32(digit)
+			continue
+		}
+		if negative {
+			return -result, idx, nil
+		}
+		return result, idx, nil
+	}
+	if negative {
+		return -result, bound, nil
+	}
+	return result, bound, nil
+}
+
+func extractUInt32BuiltInR01(v string, offset, bound int) (uint32, int, error) {
+	if bound <= offset {
+		return 0, offset, errFragmentSmallerThanExpect
+	}
+	var result uint32
+	for idx := offset; idx < bound; idx++ {
+		ch := v[idx]
+		digit := (ch & 0x0F)
+		if ((ch & 0xF0) == 0x30) && ((1023 & (1 << digit)) != 0) {
+			result = result*10 + uint32(digit)
+			continue
+		}
+		return result, idx, nil
+	}
+	return result, bound, nil
 }
 
 func extractInt32R09(v string, index, bound int) (int32, int, error) {
@@ -77,8 +124,6 @@ func computeFragmentLiteralDigest(t string, digest uint64, index, bound, length 
 	}
 	return digest, index, nil
 }
-
-var errFragmentSmallerThanExpect = errors.New("remaining path fragment smaller than expect")
 
 func computePrefixMatchingDigest32(path string, offset, bound, length int) (uint32, int, error) {
 	b := offset + length
