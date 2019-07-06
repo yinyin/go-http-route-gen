@@ -3,6 +3,7 @@ package httproutegen
 import (
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
@@ -36,6 +37,7 @@ func cleanupCodeBlock(codeText string, indent bool) string {
 type CodeGenerateInstance struct {
 	fp             *os.File
 	rootFanoutFork *FanoutFork
+	symbolScope    *SymbolScope
 
 	PackageName     string
 	ReceiverName    string
@@ -46,7 +48,11 @@ type CodeGenerateInstance struct {
 	ImportModules []string
 	HandlerNames  []string
 
+	SequenceExtractFunctionName []string
+
 	UsePrefixMatching bool
+
+	NeedErrFragmentSmallerThanExpect bool
 }
 
 // OpenCodeGenerateInstance create an instance of code generator
@@ -61,6 +67,7 @@ func OpenCodeGenerateInstance(codeFilePath string, rootFanoutFork *FanoutFork) (
 	}
 	inst.hasPrefixMatching(rootFanoutFork)
 	inst.collectHandlerNames(rootFanoutFork)
+	inst.collectImportForErrors()
 	inst.addImportModule("net/http", false)
 	return
 }
@@ -105,7 +112,7 @@ func (inst *CodeGenerateInstance) validateConfiguration() (err error) {
 func (inst *CodeGenerateInstance) hasPrefixMatching(fanoutFork *FanoutFork) {
 	if fanoutFork.LogicType == LogicTypePrefixMatching {
 		inst.UsePrefixMatching = true
-		inst.addImportModule("errors", false)
+		inst.NeedErrFragmentSmallerThanExpect = true
 		return
 	}
 	for _, childFork := range fanoutFork.ChildForks {
@@ -123,6 +130,13 @@ func (inst *CodeGenerateInstance) collectHandlerNames(fanoutFork *FanoutFork) {
 	}
 }
 
+func (inst *CodeGenerateInstance) collectImportForErrors() {
+	switch {
+	case inst.NeedErrFragmentSmallerThanExpect:
+		inst.addImportModule("errors", false)
+	}
+}
+
 func (inst *CodeGenerateInstance) makeRouteIdentName(handlerName string) string {
 	hnd := []rune(handlerName)
 	hnd[0] = unicode.ToTitle(hnd[0])
@@ -135,6 +149,53 @@ func (inst *CodeGenerateInstance) generateRouteIdentDefinitionListCode() string 
 		routeIdentNames = append(routeIdentNames, inst.makeRouteIdentName(handlerName))
 	}
 	return makeCodeConstRouteIdent(inst.NamePrefix, routeIdentNames)
+}
+
+func (inst *CodeGenerateInstance) generateSequenceExtractFunctions() (result string) {
+	inst.SequenceExtractFunctionName = make([]string, len(inst.symbolScope.FoundSequences))
+	for seqIndex, seqPart := range inst.symbolScope.FoundSequences {
+		b0, b1 := seqPart.ByteMap.ByteMap()
+		varType := seqPart.VariableType
+		varConverter := seqPart.Converter
+		extractFuncName := ""
+		switch {
+		case (0xFFFF7FFF00000000 == b0) && (0x7FFFFFFFFFFFFFFF == b1) && (varType == "string") && (varConverter == ""):
+			extractFuncName = "extractStringBuiltInR01NoSlash"
+			result += codeMethodExtractStringBuiltInR01NoSlash
+		case (0x3FF200000000000 == b0) && (0x00000000 == b1) && (varConverter == ""):
+			inst.NeedErrFragmentSmallerThanExpect = true
+			switch varType {
+			case "int32":
+				extractFuncName = "extractInt32BuiltInR01"
+				result += makeCodeMethodExtractIntBuiltInR01("32")
+			case "int64":
+				extractFuncName = "extractInt64BuiltInR01"
+				result += makeCodeMethodExtractIntBuiltInR01("64")
+			}
+		case (0x3FF000000000000 == b0) && (0x00000000 == b1) && (varConverter == ""):
+			inst.NeedErrFragmentSmallerThanExpect = true
+			switch varType {
+			case "int32":
+				extractFuncName = "extractInt32BuiltInR02"
+				result += makeCodeMethodExtractUIntBuiltInR02("Int32", "int32")
+			case "uint32":
+				extractFuncName = "extractUInt32BuiltInR02"
+				result += makeCodeMethodExtractUIntBuiltInR02("UInt32", "uint32")
+			case "int64":
+				extractFuncName = "extractInt64BuiltInR02"
+				result += makeCodeMethodExtractUIntBuiltInR02("Int64", "int64")
+			case "uint64":
+				extractFuncName = "extractUInt64BuiltInR02"
+				result += makeCodeMethodExtractUIntBuiltInR02("UInt64", "uint64")
+			}
+		}
+		if "" == extractFuncName {
+			log.Printf("WARN: empty extract function name for sequence (%d, %v)", seqIndex, seqPart)
+			extractFuncName = "unknownExtractFunction"
+		}
+		inst.SequenceExtractFunctionName[seqIndex] = extractFuncName
+	}
+	return result
 }
 
 func (inst *CodeGenerateInstance) generateSubForkFanoutCode(fanoutFork *FanoutFork, terminateSerials []int32) (result string) {
@@ -195,6 +256,15 @@ func (inst *CodeGenerateInstance) generateFuzzyMatching(fanoutFork *FanoutFork) 
 	return fmt.Sprintf("// ERROR(generateFuzzyMatching): unknown fuzzy mode bit - %d.", fanoutFork.FuzzyModeBit)
 }
 
+func (inst *CodeGenerateInstance) generateGetParameter(fanoutFork *FanoutFork) (result string) {
+	seqIndex := fanoutFork.SequenceIndex
+	seqPart := inst.symbolScope.FoundSequences[seqIndex]
+	extractFuncName := inst.SequenceExtractFunctionName[seqIndex]
+	subRoutingCode := inst.generateSubForkFanoutCode(fanoutFork, fanoutFork.CoveredTerminals)
+	result = makeCodeBlockGetParameter(inst.NamePrefix, fanoutFork.SequenceVarName, seqPart.VariableType, extractFuncName, fanoutFork.BaseOffset, subRoutingCode)
+	return
+}
+
 func (inst *CodeGenerateInstance) generateInvokeHandler(fanoutFork *FanoutFork) (result string) {
 	handlerName := fanoutFork.InvokeHandlerFanout.Route.HandlerName
 	result = fmt.Sprintf("%s.%s(w, req, reqPathOffset%s",
@@ -231,6 +301,16 @@ func (inst *CodeGenerateInstance) writeRouteIdentConstants() (err error) {
 	return
 }
 
+func (inst *CodeGenerateInstance) writeErrorVariables() (err error) {
+	switch {
+	case inst.NeedErrFragmentSmallerThanExpect:
+		if _, err = inst.fp.WriteString(codeErrFragmentSmallerThanExpect); nil != err {
+			return
+		}
+	}
+	return nil
+}
+
 func (inst *CodeGenerateInstance) writePrefixMatchingDigest32Runtime() (routingVarCode string, err error) {
 	if !inst.UsePrefixMatching {
 		return
@@ -249,6 +329,14 @@ func (inst *CodeGenerateInstance) Generate() (err error) {
 		return
 	}
 	if err = inst.writeRouteIdentConstants(); nil != err {
+		return
+	}
+	seqExtractCode := inst.generateSequenceExtractFunctions()
+	inst.collectImportForErrors()
+	if err = inst.writeErrorVariables(); nil != err {
+		return
+	}
+	if _, err = inst.fp.WriteString(seqExtractCode); nil != err {
 		return
 	}
 	var routingLogicCode string
