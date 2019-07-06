@@ -44,9 +44,10 @@ func makeCodeMethodRouteEnterance(routePrefix string, receiverName string, handl
 		"\n"
 }
 
-const codeFunctionComputePrefixMatching32 = "var errFragmentSmallerThanExpect = errors.New(\"remaining path fragment smaller than expect\")\n" +
-	"\n" +
-	"func computePrefixMatchingDigest32(path string, offset, bound, length int) (uint32, int, error) {\n" +
+const codeErrFragmentSmallerThanExpect = "var errFragmentSmallerThanExpect = errors.New(\"remaining path fragment smaller than expect\")\n" +
+	"\n"
+
+const codeFunctionComputePrefixMatching32 = "func computePrefixMatchingDigest32(path string, offset, bound, length int) (uint32, int, error) {\n" +
 	"\tb := offset + length\n" +
 	"\tif b > bound {\n" +
 	"\t\treturn 0, offset, errFragmentSmallerThanExpect\n" +
@@ -92,6 +93,79 @@ func makeCodeBlockFuzzyMatchingU16Start(baseOffset int, fuzzyDepth int, fuzzyByt
 func makeCodeBlockFuzzyMatchingU8U16Middle(fuzzyByteValue uint32, routingLogicCode string) string {
 	return "else if ch == " + ("0x" + strconv.FormatInt(int64(fuzzyByteValue), 16)) + " {\n" +
 		(routingLogicCode) + "\n" +
+		"}\n" +
+		"\n"
+}
+
+func makeCodeBlockGetParameter(routePrefix string, paramName string, paramType string, extractFuncName string, baseOffset int, routingLogicCode string) string {
+	return "var " + (paramName) + " " + (paramType) + "\n" +
+		"if " + (paramName) + ", reqPathOffset, err = " + (extractFuncName) + "(reqPath, " + ("reqPathOffset" + codeTemplateGenIntPlus(baseOffset)) + ", reqPathBound); nil != err {\n" +
+		"    return " + (routePrefix + "RouteError") + ", err\n" +
+		"}\n" +
+		(routingLogicCode) + "\n" +
+		"\n"
+}
+
+const codeMethodExtractStringBuiltInR01NoSlash = "func extractStringBuiltInR01NoSlash(v string, offset, bound int) (string, int, error) {\n" +
+	"\tvar buf []byte\n" +
+	"\tfor idx := offset; idx < bound; idx++ {\n" +
+	"\t\tif ch := v[idx]; ch != '/' {\n" +
+	"\t\t\tbuf = append(buf, ch)\n" +
+	"\t\t\tcontinue\n" +
+	"\t\t}\n" +
+	"\t\treturn string(buf), idx, nil\n" +
+	"\t}\n" +
+	"\treturn string(buf), bound, nil\n" +
+	"}\n" +
+	"\n"
+
+func makeCodeMethodExtractIntBuiltInR01(typeBit string) string {
+	return "func extractInt" + (typeBit) + "BuiltInR01(v string, offset, bound int) (int" + (typeBit) + ", int, error) {\n" +
+		"\tif bound <= offset {\n" +
+		"\t\treturn 0, offset, errFragmentSmallerThanExpect\n" +
+		"\t}\n" +
+		"\tnegative := false\n" +
+		"\tif ch := v[offset]; '-' == ch {\n" +
+		"\t\tnegative = true\n" +
+		"\t\toffset++\n" +
+		"\t}\n" +
+		"\tvar result int" + (typeBit) + "\n" +
+		"\tfor idx := offset; idx < bound; idx++ {\n" +
+		"\t\tch := v[idx]\n" +
+		"\t\tdigit := (ch & 0x0F)\n" +
+		"\t\tif ((ch & 0xF0) == 0x30) && ((1023 & (1 << digit)) != 0) {\n" +
+		"\t\t\tresult = result*10 + int" + (typeBit) + "(digit)\n" +
+		"\t\t\tcontinue\n" +
+		"\t\t}\n" +
+		"\t\tif negative {\n" +
+		"\t\t\treturn -result, idx, nil\n" +
+		"\t\t}\n" +
+		"\t\treturn result, idx, nil\n" +
+		"\t}\n" +
+		"\tif negative {\n" +
+		"\t\treturn -result, bound, nil\n" +
+		"\t}\n" +
+		"\treturn result, bound, nil\n" +
+		"}\n" +
+		"\n"
+}
+
+func makeCodeMethodExtractUIntBuiltInR02(typeTitle string, typeName string) string {
+	return "func extract" + (typeTitle) + "BuiltInR02(v string, offset, bound int) (" + (typeName) + ", int, error) {\n" +
+		"\tif bound <= offset {\n" +
+		"\t\treturn 0, offset, errFragmentSmallerThanExpect\n" +
+		"\t}\n" +
+		"\tvar result " + (typeName) + "\n" +
+		"\tfor idx := offset; idx < bound; idx++ {\n" +
+		"\t\tch := v[idx]\n" +
+		"\t\tdigit := (ch & 0x0F)\n" +
+		"\t\tif ((ch & 0xF0) == 0x30) && ((1023 & (1 << digit)) != 0) {\n" +
+		"\t\t\tresult = result*10 + " + (typeName) + "(digit)\n" +
+		"\t\t\tcontinue\n" +
+		"\t\t}\n" +
+		"\t\treturn result, idx, nil\n" +
+		"\t}\n" +
+		"\treturn result, bound, nil\n" +
 		"}\n" +
 		"\n"
 }
