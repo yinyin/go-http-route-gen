@@ -99,14 +99,21 @@ func (h *localHandler) routeRequest(w http.ResponseWriter, req *http.Request) (R
 }
 ```
 
+# Error (errFragmentSmallerThanExpect)
+
+* `const`: `codeErrFragmentSmallerThanExpect`
+* `preserve-new-line`
+
+```go
+var errFragmentSmallerThanExpect = errors.New("remaining path fragment smaller than expect")
+```
+
 # Compute Prefix Matching Digest Value (UINT-32)
 
 * `const`: `codeFunctionComputePrefixMatching32`
 * `preserve-new-line`
 
 ```go
-var errFragmentSmallerThanExpect = errors.New("remaining path fragment smaller than expect")
-
 func computePrefixMatchingDigest32(path string, offset, bound, length int) (uint32, int, error) {
 	b := offset + length
 	if b > bound {
@@ -230,5 +237,146 @@ if ch := (uint16(reqPath[reqPathOffset0]) << 8) | uint16(reqPath[reqPathOffset1]
 ```go
 else if ch == FuzzyByte {
     InvokeRoutingLogic()
+}
+```
+
+# Get Parameter
+
+* `builder`: `makeCodeBlockGetParameter`, `routePrefix string`, `paramName string`, `paramType string`, `extractFuncName string`, `baseOffset int`, `routingLogicCode string`
+* `preserve-new-line`
+* `replace`:
+  - ``` var (paramName) (string) ```
+  - `$1`
+  - ``` paramName ```
+  - `$2`
+  - ``` paramType ```
+* `replace`:
+  - ``` if (paramName), reqPathOffset, err = (extractParameterFunction)\(reqPath, (reqPathOffset), reqPathBound ```
+  - `$1`
+  - ``` paramName ```
+  - `$2`
+  - ``` extractFuncName ```
+  - `$3`
+  - ``` "reqPathOffset" + codeTemplateGenIntPlus(baseOffset) ```
+* `replace`:
+  - ``` (RouteError) ```
+  - `$1`
+  - ``` routePrefix + "RouteError" ```
+* `replace`:
+  - ``` (\s*InvokeRoutingLogic\(\)) ```
+  - `$1`
+  - ``` routingLogicCode ```
+
+```go
+var paramName string
+if paramName, reqPathOffset, err = extractParameterFunction(reqPath, reqPathOffset, reqPathBound); nil != err {
+    return RouteError, err
+}
+InvokeRoutingLogic()
+```
+
+# Extract Function (^\ => string, no-converter)
+
+* `const`: `codeMethodExtractStringBuiltInR01NoSlash`
+* `preserve-new-line`
+
+```go
+func extractStringBuiltInR01NoSlash(v string, offset, bound int) (string, int, error) {
+	var buf []byte
+	for idx := offset; idx < bound; idx++ {
+		if ch := v[idx]; ch != '/' {
+			buf = append(buf, ch)
+			continue
+		}
+		return string(buf), idx, nil
+	}
+	return string(buf), bound, nil
+}
+```
+
+# Extract Function (0-9\- => signed int32/64, no-converter)
+
+* `builder`: `makeCodeMethodExtractIntBuiltInR01`, `typeBit string`
+* `preserve-new-line`
+* `replace`:
+  - ``` extractInt(32)BuiltInR01\(v string, offset, bound int\) \(int(32), int, error\) ```
+  - `$1`
+  - ``` typeBit ```
+  - `$2`
+  - ``` typeBit ```
+* `replace`:
+  - ``` var result int(32) ```
+  - `$1`
+  - ``` typeBit ```
+* `replace`:
+  - ``` int(32)\(digit\) ```
+  - `$1`
+  - ``` typeBit ```
+
+```go
+func extractInt32BuiltInR01(v string, offset, bound int) (int32, int, error) {
+	if bound <= offset {
+		return 0, offset, errFragmentSmallerThanExpect
+	}
+	negative := false
+	if ch := v[offset]; '-' == ch {
+		negative = true
+		offset++
+	}
+	var result int32
+	for idx := offset; idx < bound; idx++ {
+		ch := v[idx]
+		digit := (ch & 0x0F)
+		if ((ch & 0xF0) == 0x30) && ((1023 & (1 << digit)) != 0) {
+			result = result*10 + int32(digit)
+			continue
+		}
+		if negative {
+			return -result, idx, nil
+		}
+		return result, idx, nil
+	}
+	if negative {
+		return -result, bound, nil
+	}
+	return result, bound, nil
+}
+```
+
+# Extract Function (0-9 => unsigned int32/64, no-converter)
+
+* `builder`: `makeCodeMethodExtractUIntBuiltInR02`, `typeTitle string`, `typeName string`
+* `preserve-new-line`
+* `replace`:
+  - ``` extract(UInt32)BuiltInR02\(v string, offset, bound int\) \((uint32), int, error\) ```
+  - `$1`
+  - ``` typeTitle ```
+  - `$2`
+  - ``` typeName ```
+* `replace`:
+  - ``` var result (uint32) ```
+  - `$1`
+  - ``` typeName ```
+* `replace`:
+  - ``` (uint32)\(digit\) ```
+  - `$1`
+  - ``` typeName ```
+
+```go
+func extractUInt32BuiltInR02(v string, offset, bound int) (uint32, int, error) {
+	if bound <= offset {
+		return 0, offset, errFragmentSmallerThanExpect
+	}
+	var result uint32
+	for idx := offset; idx < bound; idx++ {
+		ch := v[idx]
+		digit := (ch & 0x0F)
+		if ((ch & 0xF0) == 0x30) && ((1023 & (1 << digit)) != 0) {
+			result = result*10 + uint32(digit)
+			continue
+		}
+		return result, idx, nil
+	}
+	return result, bound, nil
 }
 ```
