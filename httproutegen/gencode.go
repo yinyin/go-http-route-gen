@@ -56,7 +56,7 @@ type CodeGenerateInstance struct {
 }
 
 // OpenCodeGenerateInstance create an instance of code generator
-func OpenCodeGenerateInstance(codeFilePath string, rootFanoutFork *FanoutFork) (inst *CodeGenerateInstance, err error) {
+func OpenCodeGenerateInstance(codeFilePath string, rootFanoutFork *FanoutFork, symbolScope *SymbolScope) (inst *CodeGenerateInstance, err error) {
 	fp, err := os.Create(codeFilePath)
 	if nil != err {
 		return
@@ -64,6 +64,7 @@ func OpenCodeGenerateInstance(codeFilePath string, rootFanoutFork *FanoutFork) (
 	inst = &CodeGenerateInstance{
 		fp:             fp,
 		rootFanoutFork: rootFanoutFork,
+		symbolScope:    symbolScope,
 	}
 	inst.hasPrefixMatching(rootFanoutFork)
 	inst.collectHandlerNames(rootFanoutFork)
@@ -151,6 +152,41 @@ func (inst *CodeGenerateInstance) generateRouteIdentDefinitionListCode() string 
 	return makeCodeConstRouteIdent(inst.NamePrefix, routeIdentNames)
 }
 
+func (inst *CodeGenerateInstance) generateExtractFunctionOfByteSliceString(seqIndex int, seqPart *SequencePart) (extractFuncName, result string) {
+	varType := seqPart.VariableType
+	var typeTitle, typeName, typeCasting string
+	if varType == "string" {
+		typeTitle = "String"
+		typeName = "string"
+		typeCasting = "string"
+	} else if varType == "[]byte" {
+		typeTitle = "ByteSlice"
+		typeName = "[]byte"
+		typeCasting = ""
+	}
+	var rangeBase byte = 0xFF
+	for bidx := byte(0); bidx < 128; bidx++ {
+		if seqPart.ByteMap.HasByte(bidx) && rangeBase == 0xFF {
+			rangeBase = bidx
+			break
+		}
+	}
+	bitmaskSlice := make([]uint32, 4)
+	for bidx := byte(0); bidx < 128; bidx++ {
+		if bidx < rangeBase {
+			continue
+		}
+		v := bidx - rangeBase
+		page := (v >> 5) & 0x3
+		nbit := v & 0x1F
+		bitmaskSlice[page] = bitmaskSlice[page] | (1 << nbit)
+	}
+	bitmaskIdent := fmt.Sprintf("Seq%03d", seqIndex)
+	extractFuncName = "extract" + typeTitle + "Rx" + bitmaskIdent
+	result = makeCodeMethodExtractByteSliceStringBitMasked(typeTitle, typeName, typeCasting, rangeBase, bitmaskIdent, bitmaskSlice)
+	return
+}
+
 func (inst *CodeGenerateInstance) generateSequenceExtractFunctions() (result string) {
 	inst.SequenceExtractFunctionName = make([]string, len(inst.symbolScope.FoundSequences))
 	for seqIndex, seqPart := range inst.symbolScope.FoundSequences {
@@ -188,6 +224,10 @@ func (inst *CodeGenerateInstance) generateSequenceExtractFunctions() (result str
 				extractFuncName = "extractUInt64BuiltInR02"
 				result += makeCodeMethodExtractUIntBuiltInR02("UInt64", "uint64")
 			}
+		case ((varType == "string") || (varType == "[]byte]")) && (varConverter == ""):
+			var extractFuncCode string
+			extractFuncName, extractFuncCode = inst.generateExtractFunctionOfByteSliceString(seqIndex, seqPart)
+			result += extractFuncCode
 		}
 		if "" == extractFuncName {
 			log.Printf("WARN: empty extract function name for sequence (%d, %v)", seqIndex, seqPart)
