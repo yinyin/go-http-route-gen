@@ -380,3 +380,64 @@ func extractUInt32BuiltInR02(v string, offset, bound int) (uint32, int, error) {
 	return result, bound, nil
 }
 ```
+
+# Extract Function (bit-map => []byte/string, no-converter)
+
+* `builder`: `makeCodeMethodExtractByteSliceStringBitMasked`, `typeTitle string`, `typeName string`, `typeCasting string`, `rangeBase byte`, `bitmaskIdent string`, `bitmaskSlice []uint32`
+* `preserve-new-line`
+* `replace`:
+  - ``` filterMask(String)Rx(00000000) = \[\.\.\.\]uint32{0x(0), 0x(1), 0x(2), 0x(3)} ```
+  - `$1`
+  - ``` typeTitle ```
+  - `$2`
+  - ``` bitmaskIdent ```
+  - `$3`
+  - ``` strconv.FormatInt(int64(bitmaskSlice[0]), 16) ```
+  - `$4`
+  - ``` strconv.FormatInt(int64(bitmaskSlice[1]), 16) ```
+  - `$5`
+  - ``` strconv.FormatInt(int64(bitmaskSlice[2]), 16) ```
+  - `$6`
+  - ``` strconv.FormatInt(int64(bitmaskSlice[3]), 16) ```
+* `replace`:
+  - ``` extract(String)Rx(00000000)\(v string, offset, bound int\) \((string), int, error\) ```
+  - `$1`
+  - ``` typeTitle ```
+  - `$2`
+  - ``` bitmaskIdent ```
+  - `$3`
+  - ``` typeName ```
+* `replace`:
+  - ``` moved := ch - (generalBase) ```
+  - `$1`
+  - ``` "0x" + strconv.FormatInt(int64(rangeBase), 16) ```
+* `replace`:
+  - ``` filterMask(String)Rx(00000000)\[page\] ```
+  - `$1`
+  - ``` typeTitle ```
+  - `$2`
+  - ``` bitmaskIdent ```
+* `replace`:
+  - ``` return (string)\(result\), ```
+  - `$1`
+  - ``` typeCasting ```
+
+```go
+var filterMaskStringRx00000000 = [...]uint32{0x0, 0x1, 0x2, 0x3}
+
+func extractStringRx00000000(v string, offset, bound int) (string, int, error) {
+	var result []byte
+	for idx := offset; idx < bound; idx++ {
+		ch := v[idx]
+		moved := ch - generalBase
+		page := (moved >> 5) & 0x3
+		nbit := moved & 0x1F
+		if 0 != (filterMaskStringRx00000000[page] & (1 << nbit)) {
+			result = append(result, ch)
+			continue
+		}
+		return string(result), idx, nil
+	}
+	return string(result), bound, nil
+}
+```
