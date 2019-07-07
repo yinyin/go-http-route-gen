@@ -93,7 +93,8 @@ func (h *localHandler) routeRequest(w http.ResponseWriter, req *http.Request) (R
 	}
 	if reqPathOffset >= reqPathBound {
 		return RouteNone, nil
-	}
+    }
+    var err error
     InvokeRoutingLogic()
 	return RouteNone, nil
 }
