@@ -169,3 +169,24 @@ func makeCodeMethodExtractUIntBuiltInR02(typeTitle string, typeName string) stri
 		"}\n" +
 		"\n"
 }
+
+func makeCodeMethodExtractByteSliceStringBitMasked(typeTitle string, typeName string, typeCasting string, rangeBase byte, bitmaskIdent string, bitmaskSlice []uint32) string {
+	return "var filterMask" + (typeTitle) + "Rx" + (bitmaskIdent) + " = [...]uint32{0x" + (strconv.FormatInt(int64(bitmaskSlice[0]), 16)) + ", 0x" + (strconv.FormatInt(int64(bitmaskSlice[1]), 16)) + ", 0x" + (strconv.FormatInt(int64(bitmaskSlice[2]), 16)) + ", 0x" + (strconv.FormatInt(int64(bitmaskSlice[3]), 16)) + "}\n" +
+		"\n" +
+		"func extract" + (typeTitle) + "Rx" + (bitmaskIdent) + "(v string, offset, bound int) (" + (typeName) + ", int, error) {\n" +
+		"\tvar result []byte\n" +
+		"\tfor idx := offset; idx < bound; idx++ {\n" +
+		"\t\tch := v[idx]\n" +
+		"\t\tmoved := ch - " + ("0x" + strconv.FormatInt(int64(rangeBase), 16)) + "\n" +
+		"\t\tpage := (moved >> 5) & 0x3\n" +
+		"\t\tnbit := moved & 0x1F\n" +
+		"\t\tif 0 != (filterMask" + (typeTitle) + "Rx" + (bitmaskIdent) + "[page] & (1 << nbit)) {\n" +
+		"\t\t\tresult = append(result, ch)\n" +
+		"\t\t\tcontinue\n" +
+		"\t\t}\n" +
+		"\t\treturn " + (typeCasting) + "(result), idx, nil\n" +
+		"\t}\n" +
+		"\treturn " + (typeCasting) + "(result), bound, nil\n" +
+		"}\n" +
+		"\n"
+}
