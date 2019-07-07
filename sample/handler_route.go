@@ -114,13 +114,15 @@ func extractByteSliceRx00000000(v string, offset, bound int) ([]byte, int, error
 	return result, bound, nil
 }
 
+var filterMaskStringRx00000000 = [...]uint32{0x0, 0x1, 0x2, 0x3}
+
 func extractStringRx00000000(v string, offset, bound int) (string, int, error) {
 	var result []byte
 	for idx := offset; idx < bound; idx++ {
 		ch := v[idx]
 		page := (ch >> 5) & 0x3
 		nbit := ch & 0x1F
-		if 0 != (filterMaskByteSliceRx00000000[page] & (1 << nbit)) {
+		if 0 != (filterMaskStringRx00000000[page] & (1 << nbit)) {
 			result = append(result, ch)
 			continue
 		}
