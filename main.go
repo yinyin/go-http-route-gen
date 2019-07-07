@@ -40,7 +40,7 @@ func main() {
 	} else if dumpFanoutContent {
 		log.Print(string(fanoutJSONText))
 	}
-	codeGenInst, err := httproutegen.OpenCodeGenerateInstance(outputFilePath, fanoutInstance.RootFanoutFork)
+	codeGenInst, err := httproutegen.OpenCodeGenerateInstance(outputFilePath, fanoutInstance.RootFanoutFork, &fanoutInstance.InstanceSymbolScope)
 	if nil != err {
 		log.Fatalf("ERR: cannot open code generation instance: %v", err)
 		return
