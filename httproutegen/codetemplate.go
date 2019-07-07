@@ -37,7 +37,8 @@ func makeCodeMethodRouteEnterance(routePrefix string, receiverName string, handl
 		"\t}\n" +
 		"\tif reqPathOffset >= reqPathBound {\n" +
 		"\t\treturn " + (routePrefix + "RouteNone") + ", nil\n" +
-		"\t}\n" +
+		"    }\n" +
+		"    var err error\n" +
 		(routingLogicCode) + "\n" +
 		"\treturn " + (routePrefix + "RouteNone") + ", nil\n" +
 		"}\n" +
