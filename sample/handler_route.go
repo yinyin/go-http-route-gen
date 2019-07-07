@@ -97,6 +97,23 @@ func extractUInt32BuiltInR01(v string, offset, bound int) (uint32, int, error) {
 	return result, bound, nil
 }
 
+var filterMaskRx00000000 = [...]uint32{0, 0, 0, 0}
+
+func extractByteSliceRx00000000(v string, offset, bound int) ([]byte, int, error) {
+	var result []byte
+	for idx := offset; idx < bound; idx++ {
+		ch := v[idx]
+		page := (ch >> 5) & 0x3
+		nbit := ch & 0x1F
+		if 0 != (filterMaskRx00000000[page] & (1 << nbit)) {
+			result = append(result, ch)
+			continue
+		}
+		return result, idx, nil
+	}
+	return result, bound, nil
+}
+
 func extractInt32R09(v string, index, bound int) (int32, int, error) {
 	var result int32
 	for idx := index; idx < bound; idx++ {
