@@ -254,23 +254,29 @@ func (inst *CodeGenerateInstance) generateSubForkFanoutCode(fanoutFork *FanoutFo
 
 func (inst *CodeGenerateInstance) generatePrefixMatching(fanoutFork *FanoutFork) (result string) {
 	result = makeCodeBlockPrefixMatching32Start(inst.NamePrefix, fanoutFork.BaseOffset, fanoutFork.PrefixLiteralDigests.Depth)
+	result = strings.TrimRightFunc(result, unicode.IsSpace)
 	for _, digestSet := range fanoutFork.PrefixLiteralDigests.Digests {
 		subRoutingCode := inst.generateSubForkFanoutCode(fanoutFork, digestSet.TerminateSerials)
 		codeText := makeCodeBlockPrefixMatching32Fork(inst.NamePrefix, digestSet.Value, subRoutingCode)
+		codeText = strings.TrimRightFunc(codeText, unicode.IsSpace)
 		result += codeText
 	}
+	result += "\n"
 	return
 }
 
 func (inst *CodeGenerateInstance) generateFuzzyMatchingU8(fanoutFork *FanoutFork) (result string) {
 	for idx, trackSet := range fanoutFork.FuzzyTracker.BestU8 {
 		subRoutingCode := inst.generateSubForkFanoutCode(fanoutFork, trackSet.TerminateSerials)
+		var codeBlock string
 		if idx == 0 {
-			result += makeCodeBlockFuzzyMatchingU8Start(fanoutFork.BaseOffset, fanoutFork.FuzzyTracker.BestU8Depth, trackSet.Value, subRoutingCode)
+			codeBlock = makeCodeBlockFuzzyMatchingU8Start(fanoutFork.BaseOffset, fanoutFork.FuzzyTracker.BestU8Depth, trackSet.Value, subRoutingCode)
 		} else {
-			result += makeCodeBlockFuzzyMatchingU8U16Middle(trackSet.Value, subRoutingCode)
+			codeBlock = makeCodeBlockFuzzyMatchingU8U16Middle(trackSet.Value, subRoutingCode)
 		}
+		result += strings.TrimRightFunc(codeBlock, unicode.IsSpace)
 	}
+	result += "\n"
 	return
 }
 
@@ -343,6 +349,19 @@ func (inst *CodeGenerateInstance) writeRouteIdentConstants() (err error) {
 	return
 }
 
+func (inst *CodeGenerateInstance) writeModuleImports() (err error) {
+	if _, err = inst.fp.WriteString("import (\n"); nil != err {
+		return
+	}
+	for _, impStmt := range inst.ImportModules {
+		if _, err = inst.fp.WriteString(impStmt + "\n"); nil != err {
+			return
+		}
+	}
+	_, err = inst.fp.WriteString(")\n\n")
+	return
+}
+
 func (inst *CodeGenerateInstance) writeErrorVariables() (err error) {
 	switch {
 	case inst.NeedErrFragmentSmallerThanExpect:
@@ -370,11 +389,14 @@ func (inst *CodeGenerateInstance) Generate() (err error) {
 	if _, err = inst.fp.WriteString("package " + inst.PackageName + "\n\n"); nil != err {
 		return
 	}
+	seqExtractCode := inst.generateSequenceExtractFunctions()
+	inst.collectImportForErrors()
+	if err = inst.writeModuleImports(); nil != err {
+		return
+	}
 	if err = inst.writeRouteIdentConstants(); nil != err {
 		return
 	}
-	seqExtractCode := inst.generateSequenceExtractFunctions()
-	inst.collectImportForErrors()
 	if err = inst.writeErrorVariables(); nil != err {
 		return
 	}
