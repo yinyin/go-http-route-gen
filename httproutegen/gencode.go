@@ -325,6 +325,8 @@ func (inst *CodeGenerateInstance) generateFanoutCode(fanoutFork *FanoutFork) (re
 		return inst.generatePrefixMatching(fanoutFork)
 	case LogicTypeFuzzyMatching:
 		return inst.generateFuzzyMatching(fanoutFork)
+	case LogicTypeGetParameter:
+		return inst.generateGetParameter(fanoutFork)
 	case LogicTypeInvokeHandler:
 		return inst.generateInvokeHandler(fanoutFork)
 	}
