@@ -6,8 +6,8 @@
 package httproutegen
 
 import (
-    "strconv"
-    "strings"
+	"strconv"
+	"strings"
 )
 
 ```
@@ -93,9 +93,9 @@ func (h *localHandler) routeRequest(w http.ResponseWriter, req *http.Request) (R
 	}
 	if reqPathOffset >= reqPathBound {
 		return RouteNone, nil
-    }
-    var err error
-    InvokeRoutingLogic()
+	}
+	var err error
+	InvokeRoutingLogic()
 	return RouteNone, nil
 }
 ```
@@ -149,7 +149,7 @@ func computePrefixMatchingDigest32(path string, offset, bound, length int) (uint
 
 ```go
 if digest32, reqPathOffset, err = computePrefixMatchingDigest32(reqPath, reqPathOffset, reqPathBound, DigestLen); nil != err {
-    return RouteError, err
+	return RouteError, err
 }
 ```
 
@@ -168,7 +168,7 @@ if digest32, reqPathOffset, err = computePrefixMatchingDigest32(reqPath, reqPath
 
 ```go
 else if digest32 == DigestValue {
-    InvokeRoutingLogic()
+	InvokeRoutingLogic()
 }
 ```
 
@@ -187,7 +187,7 @@ else if digest32 == DigestValue {
 
 ```go
 if reqPathOffset = reqPathOffset + 3; reqPathOffset >= reqPathBound {
-    return RouteIncomplete, nil
+	return RouteIncomplete, nil
 }
 ```
 
@@ -202,7 +202,7 @@ if reqPathOffset = reqPathOffset + 3; reqPathOffset >= reqPathBound {
 
 ```go
 if reqPathOffset >= reqPathBound {
-    return RouteIncomplete, nil
+	return RouteIncomplete, nil
 }
 ```
 
@@ -221,7 +221,7 @@ if reqPathOffset >= reqPathBound {
 
 ```go
 if ch := reqPath[reqPathOffset]; ch == FuzzyByte {
-    InvokeRoutingLogic()
+	InvokeRoutingLogic()
 }
 ```
 
@@ -240,7 +240,7 @@ if ch := reqPath[reqPathOffset]; ch == FuzzyByte {
 
 ```go
 if ch := (uint16(reqPath[reqPathOffset-1]) << 8) | uint16(reqPath[reqPathOffset]); ch == FuzzyByte {
-    InvokeRoutingLogic()
+	InvokeRoutingLogic()
 }
 ```
 
@@ -259,7 +259,7 @@ if ch := (uint16(reqPath[reqPathOffset-1]) << 8) | uint16(reqPath[reqPathOffset]
 
 ```go
 else if ch == FuzzyByte {
-    InvokeRoutingLogic()
+	InvokeRoutingLogic()
 }
 ```
 
@@ -293,7 +293,7 @@ else if ch == FuzzyByte {
 ```go
 var paramName string
 if paramName, reqPathOffset, err = extractParameterFunction(reqPath, reqPathOffset, reqPathBound); nil != err {
-    return RouteError, err
+	return RouteError, err
 }
 InvokeRoutingLogic()
 ```
