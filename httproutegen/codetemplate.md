@@ -172,14 +172,44 @@ else if digest32 == DigestValue {
 }
 ```
 
-# Code of Fuzzy Matching Logic (U8, Start)
+# Code of Fuzzy Matching Logic (Boundary Check, Non-zero)
 
-* `builder`: `makeCodeBlockFuzzyMatchingU8Start`, `baseOffset int`, `fuzzyDepth int`, `fuzzyByteValue uint32`, `routingLogicCode string`
+* `builder`: `makeCodeBlockFuzzyMatchingBoundCheckNonZero`, `routePrefix string`, `baseOffset int`, `fuzzyDepth int`
 * `preserve-new-line`
 * `replace`:
-  - ``` \[(reqPathOffset)\] ```
+  - ``` reqPathOffset = (reqPathOffset \+ 3) ```
   - `$1`
   - ``` "reqPathOffset" + codeTemplateGenIntPlus(baseOffset+fuzzyDepth) ```
+* `replace`:
+  - ``` (RouteIncomplete) ```
+  - `$1`
+  - ``` routePrefix + "RouteIncomplete" ```
+
+```go
+if reqPathOffset = reqPathOffset + 3; reqPathOffset >= reqPathBound {
+    return RouteIncomplete, nil
+}
+```
+
+# Code of Fuzzy Matching Logic (Boundary Check, Zero)
+
+* `builder`: `makeCodeBlockFuzzyMatchingBoundCheckZero`, `routePrefix string`
+* `preserve-new-line`
+* `replace`:
+  - ``` (RouteIncomplete) ```
+  - `$1`
+  - ``` routePrefix + "RouteIncomplete" ```
+
+```go
+if reqPathOffset >= reqPathBound {
+    return RouteIncomplete, nil
+}
+```
+
+# Code of Fuzzy Matching Logic (U8, Start)
+
+* `builder`: `makeCodeBlockFuzzyMatchingU8Start`, `fuzzyByteValue uint32`, `routingLogicCode string`
+* `preserve-new-line`
 * `replace`:
   - ``` == (FuzzyByte) ```
   - `$1`
@@ -197,16 +227,8 @@ if ch := reqPath[reqPathOffset]; ch == FuzzyByte {
 
 # Code of Fuzzy Matching Logic (U16, Start)
 
-* `builder`: `makeCodeBlockFuzzyMatchingU16Start`, `baseOffset int`, `fuzzyDepth int`, `fuzzyByteValue uint32`, `routingLogicCode string`
+* `builder`: `makeCodeBlockFuzzyMatchingU16Start`, `fuzzyByteValue uint32`, `routingLogicCode string`
 * `preserve-new-line`
-* `replace`:
-  - ``` \[(reqPathOffset0)\] ```
-  - `$1`
-  - ``` "reqPathOffset" + codeTemplateGenIntPlus(baseOffset+fuzzyDepth-1) ```
-* `replace`:
-  - ``` \[(reqPathOffset1)\] ```
-  - `$1`
-  - ``` "reqPathOffset" + codeTemplateGenIntPlus(baseOffset+fuzzyDepth) ```
 * `replace`:
   - ``` == (FuzzyByte) ```
   - `$1`
@@ -217,7 +239,7 @@ if ch := reqPath[reqPathOffset]; ch == FuzzyByte {
   - ``` routingLogicCode ```
 
 ```go
-if ch := (uint16(reqPath[reqPathOffset0]) << 8) | uint16(reqPath[reqPathOffset1]); ch == FuzzyByte {
+if ch := (uint16(reqPath[reqPathOffset-1]) << 8) | uint16(reqPath[reqPathOffset]); ch == FuzzyByte {
     InvokeRoutingLogic()
 }
 ```
