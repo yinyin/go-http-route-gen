@@ -36,7 +36,7 @@ func (h *sampleHandler) listProducts(w http.ResponseWriter, req *http.Request, p
 }
 
 func (h *sampleHandler) showProduct(w http.ResponseWriter, req *http.Request, pathOffset int, productID int64) {
-	h.responseText(w, req, pathOffset, fmt.Sprintf("showProduct(sessionId=%d, productId=%d)", productID))
+	h.responseText(w, req, pathOffset, fmt.Sprintf("showProduct(productId=%d)", productID))
 }
 
 func (h *sampleHandler) sampleData(w http.ResponseWriter, req *http.Request, pathOffset int) {
