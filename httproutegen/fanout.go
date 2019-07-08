@@ -496,14 +496,17 @@ func (fork *FanoutFork) makeNextStageForksFromFuzzyMatching() (nextStageForks []
 		}
 	}
 	var trackSet []*FanoutFuzzyTrackSet
+	var trackDepth int
 	if fork.FuzzyModeBit == 16 {
 		trackSet = fork.FuzzyTracker.BestU16
+		trackDepth = fork.FuzzyTracker.BestU16Depth
 	} else {
 		trackSet = fork.FuzzyTracker.BestU8
+		trackDepth = fork.FuzzyTracker.BestU8Depth
 	}
 	for _, s := range trackSet {
 		aux := FanoutFork{
-			BaseOffset: fork.BaseOffset + fork.FuzzyTracker.Depth,
+			BaseOffset: fork.FuzzyTracker.Depth - trackDepth, // fork.BaseOffset + fork.FuzzyTracker.Depth,
 		}
 		aux.CoveredTerminals = append(aux.CoveredTerminals, s.TerminateSerials...)
 		aux.AvailableSequenceVarName = append(aux.AvailableSequenceVarName, fork.AvailableSequenceVarName...)

@@ -267,12 +267,20 @@ func (inst *CodeGenerateInstance) generatePrefixMatching(fanoutFork *FanoutFork)
 	return
 }
 
+func (inst *CodeGenerateInstance) generateFuzzyMatchingBoundCheck(fanoutFork *FanoutFork, bestDepth int) (result string) {
+	if offsetSum := fanoutFork.BaseOffset + bestDepth; 0 != offsetSum {
+		return makeCodeBlockFuzzyMatchingBoundCheckNonZero(inst.NamePrefix, fanoutFork.BaseOffset, bestDepth)
+	}
+	return makeCodeBlockFuzzyMatchingBoundCheckZero(inst.NamePrefix)
+}
+
 func (inst *CodeGenerateInstance) generateFuzzyMatchingU8(fanoutFork *FanoutFork) (result string) {
+	result = inst.generateFuzzyMatchingBoundCheck(fanoutFork, fanoutFork.FuzzyTracker.BestU8Depth)
 	for idx, trackSet := range fanoutFork.FuzzyTracker.BestU8 {
 		subRoutingCode := inst.generateSubForkFanoutCode(fanoutFork, trackSet.TerminateSerials)
 		var codeBlock string
 		if idx == 0 {
-			codeBlock = makeCodeBlockFuzzyMatchingU8Start(fanoutFork.BaseOffset, fanoutFork.FuzzyTracker.BestU8Depth, trackSet.Value, subRoutingCode)
+			codeBlock = makeCodeBlockFuzzyMatchingU8Start(trackSet.Value, subRoutingCode)
 		} else {
 			codeBlock = makeCodeBlockFuzzyMatchingU8U16Middle(trackSet.Value, subRoutingCode)
 		}
@@ -283,10 +291,11 @@ func (inst *CodeGenerateInstance) generateFuzzyMatchingU8(fanoutFork *FanoutFork
 }
 
 func (inst *CodeGenerateInstance) generateFuzzyMatchingU16(fanoutFork *FanoutFork) (result string) {
+	result = inst.generateFuzzyMatchingBoundCheck(fanoutFork, fanoutFork.FuzzyTracker.BestU16Depth)
 	for idx, trackSet := range fanoutFork.FuzzyTracker.BestU16 {
 		subRoutingCode := inst.generateSubForkFanoutCode(fanoutFork, trackSet.TerminateSerials)
 		if idx == 0 {
-			result += makeCodeBlockFuzzyMatchingU16Start(fanoutFork.BaseOffset, fanoutFork.FuzzyTracker.BestU16Depth, trackSet.Value, subRoutingCode)
+			result += makeCodeBlockFuzzyMatchingU16Start(trackSet.Value, subRoutingCode)
 		} else {
 			result += makeCodeBlockFuzzyMatchingU8U16Middle(trackSet.Value, subRoutingCode)
 		}
