@@ -375,13 +375,20 @@ func (fork *FanoutFork) Covered(fanoutSymbol FanoutSymbol) bool {
 func (fork *FanoutFork) FullyMatch(fanoutSymbol FanoutSymbol) bool {
 	termSerials := fanoutSymbol.Fanout.GetTerminateSerials()
 	if len(fork.CoveredTerminals) != len(termSerials) {
+		log.Printf("INFO: terminate serial not fully match: %v vs. %v", fork.CoveredTerminals, termSerials)
 		return false
 	}
 	for _, serial := range fork.CoveredTerminals {
+		found := false
 		for _, ts := range termSerials {
-			if serial != ts {
-				return false
+			if serial == ts {
+				found = true
+				break
 			}
+		}
+		if !found {
+			log.Printf("INFO: terminate serial not fully match: %v vs. %v", fork.CoveredTerminals, termSerials)
+			return false
 		}
 	}
 	return true
@@ -461,7 +468,6 @@ func (fork *FanoutFork) rejectSymbolWithSealPrefixMatching(symbols []FanoutSymbo
 			fo := FindFanoutForkForSymbol(nextStageForks, sym)
 			if !fo.FullyMatch(sym) {
 				err = fmt.Errorf("parameter fetch is not fully matching fork: %#v, %v", sym.Fanout, fo.LogicType)
-				log.Printf("ERROR: %v", err)
 			}
 		}
 	}
@@ -524,7 +530,6 @@ func (fork *FanoutFork) rejectSymbolWithSealFuzzyMatching(symbols []FanoutSymbol
 			fo := FindFanoutForkForSymbol(nextStageForks, sym)
 			if !fo.FullyMatch(sym) {
 				err = fmt.Errorf("parameter fetch is not fully matching fork: %#v, %v", sym.Fanout, fo.LogicType)
-				log.Printf("ERROR: %v", err)
 			}
 		}
 	}
