@@ -37,8 +37,8 @@ func makeCodeMethodRouteEnterance(routePrefix string, receiverName string, handl
 		"\t}\n" +
 		"\tif reqPathOffset >= reqPathBound {\n" +
 		"\t\treturn " + (routePrefix + "RouteNone") + ", nil\n" +
-		"    }\n" +
-		"    var err error\n" +
+		"\t}\n" +
+		"\tvar err error\n" +
 		(routingLogicCode) + "\n" +
 		"\treturn " + (routePrefix + "RouteNone") + ", nil\n" +
 		"}\n" +
@@ -65,7 +65,7 @@ const codeFunctionComputePrefixMatching32 = "func computePrefixMatchingDigest32(
 
 func makeCodeBlockPrefixMatching32Start(routePrefix string, baseOffset int, digestLength int) string {
 	return "if digest32, reqPathOffset, err = computePrefixMatchingDigest32(reqPath, " + ("reqPathOffset" + codeTemplateGenIntPlus(baseOffset)) + ", reqPathBound, " + (strconv.FormatInt(int64(digestLength), 10)) + "); nil != err {\n" +
-		"    return " + (routePrefix + "RouteError") + ", err\n" +
+		"\treturn " + (routePrefix + "RouteError") + ", err\n" +
 		"}\n" +
 		"\n"
 }
@@ -77,15 +77,29 @@ func makeCodeBlockPrefixMatching32Fork(routePrefix string, digestValue uint32, r
 		"\n"
 }
 
-func makeCodeBlockFuzzyMatchingU8Start(baseOffset int, fuzzyDepth int, fuzzyByteValue uint32, routingLogicCode string) string {
-	return "if ch := reqPath[" + ("reqPathOffset" + codeTemplateGenIntPlus(baseOffset+fuzzyDepth)) + "]; ch == " + ("0x" + strconv.FormatInt(int64(fuzzyByteValue), 16)) + " {\n" +
+func makeCodeBlockFuzzyMatchingBoundCheckNonZero(routePrefix string, baseOffset int, fuzzyDepth int) string {
+	return "if reqPathOffset = " + ("reqPathOffset" + codeTemplateGenIntPlus(baseOffset+fuzzyDepth)) + "; reqPathOffset >= reqPathBound {\n" +
+		"\treturn " + (routePrefix + "RouteIncomplete") + ", nil\n" +
+		"}\n" +
+		"\n"
+}
+
+func makeCodeBlockFuzzyMatchingBoundCheckZero(routePrefix string) string {
+	return "if reqPathOffset >= reqPathBound {\n" +
+		"\treturn " + (routePrefix + "RouteIncomplete") + ", nil\n" +
+		"}\n" +
+		"\n"
+}
+
+func makeCodeBlockFuzzyMatchingU8Start(fuzzyByteValue uint32, routingLogicCode string) string {
+	return "if ch := reqPath[reqPathOffset]; ch == " + ("0x" + strconv.FormatInt(int64(fuzzyByteValue), 16)) + " {\n" +
 		(routingLogicCode) + "\n" +
 		"}\n" +
 		"\n"
 }
 
-func makeCodeBlockFuzzyMatchingU16Start(baseOffset int, fuzzyDepth int, fuzzyByteValue uint32, routingLogicCode string) string {
-	return "if ch := (uint16(reqPath[" + ("reqPathOffset" + codeTemplateGenIntPlus(baseOffset+fuzzyDepth-1)) + "]) << 8) | uint16(reqPath[" + ("reqPathOffset" + codeTemplateGenIntPlus(baseOffset+fuzzyDepth)) + "]); ch == " + ("0x" + strconv.FormatInt(int64(fuzzyByteValue), 16)) + " {\n" +
+func makeCodeBlockFuzzyMatchingU16Start(fuzzyByteValue uint32, routingLogicCode string) string {
+	return "if ch := (uint16(reqPath[reqPathOffset-1]) << 8) | uint16(reqPath[reqPathOffset]); ch == " + ("0x" + strconv.FormatInt(int64(fuzzyByteValue), 16)) + " {\n" +
 		(routingLogicCode) + "\n" +
 		"}\n" +
 		"\n"
@@ -101,7 +115,7 @@ func makeCodeBlockFuzzyMatchingU8U16Middle(fuzzyByteValue uint32, routingLogicCo
 func makeCodeBlockGetParameter(routePrefix string, paramName string, paramType string, extractFuncName string, baseOffset int, routingLogicCode string) string {
 	return "var " + (paramName) + " " + (paramType) + "\n" +
 		"if " + (paramName) + ", reqPathOffset, err = " + (extractFuncName) + "(reqPath, " + ("reqPathOffset" + codeTemplateGenIntPlus(baseOffset)) + ", reqPathBound); nil != err {\n" +
-		"    return " + (routePrefix + "RouteError") + ", err\n" +
+		"\treturn " + (routePrefix + "RouteError") + ", err\n" +
 		"}\n" +
 		(routingLogicCode) + "\n" +
 		"\n"
