@@ -141,7 +141,7 @@ func (h *sampleHandler) routeRequest(w http.ResponseWriter, req *http.Request) (
 				h.downloadProduct(w, req, reqPathOffset, sessionId, targetId)
 				return RouteToDownloadProduct, nil
 			} else if ch == 0x6e {
-				if reqPathOffset = reqPathOffset + 12; reqPathOffset >= reqPathBound {
+				if reqPathOffset = reqPathOffset + 13; reqPathOffset >= reqPathBound {
 					return RouteIncomplete, nil
 				}
 				if ch := reqPath[reqPathOffset]; ch == 0x73 {
@@ -195,7 +195,7 @@ func (h *sampleHandler) routeRequest(w http.ResponseWriter, req *http.Request) (
 			return RouteError, err
 		} else if digest32 == 0x67 {
 			var num int32
-			if num, reqPathOffset, err = extractInt32BuiltInR02(reqPath, reqPathOffset+13, reqPathBound); nil != err {
+			if num, reqPathOffset, err = extractInt32BuiltInR02(reqPath, reqPathOffset+14, reqPathBound); nil != err {
 				return RouteError, err
 			}
 			h.debugNumber(w, req, reqPathOffset+1, num)
