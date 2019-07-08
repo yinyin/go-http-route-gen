@@ -15,7 +15,7 @@ func (h *sampleHandler) responseText(w http.ResponseWriter, req *http.Request, p
 	w.WriteHeader(http.StatusOK)
 	var restPath string
 	if len(req.URL.Path) > pathOffset {
-		restPath = string(req.URL.Path[pathOffset:(len(req.URL.Path) - 1)])
+		restPath = string(req.URL.Path[pathOffset:])
 	} else {
 		restPath = fmt.Sprintf("-EMPTY; len(req.URL.Path)=%d; pathOffset=%d", len(req.URL.Path), pathOffset)
 	}
