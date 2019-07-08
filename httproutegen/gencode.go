@@ -175,7 +175,7 @@ func (inst *CodeGenerateInstance) generateExtractFunctionOfByteSliceString(seqIn
 	}
 	bitmaskSlice := make([]uint32, 4)
 	for bidx := byte(0); bidx < 128; bidx++ {
-		if bidx < rangeBase {
+		if (bidx < rangeBase) || (!seqPart.ByteMap.HasByte(bidx)) {
 			continue
 		}
 		v := bidx - rangeBase
