@@ -31,6 +31,9 @@ func MakeFanoutEntry(symbolScope *SymbolScope, routeEntry *RouteEntry) (fanoutEn
 		err = newErrParseComponent(routeEntry.Ident, err)
 		return
 	}
+	if (len(routeEntry.Routes) > 0) && (len(symbols) > 0) {
+		symbols = append(symbols, newByteSymbol('/'))
+	}
 	fanoutEntry = &FanoutEntry{
 		Route:   routeEntry,
 		Symbols: symbols,
