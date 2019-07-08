@@ -9,21 +9,62 @@ import (
 type sampleHandler struct {
 }
 
-func (h *sampleHandler) responseText(w http.ResponseWriter, req *http.Request, message string) {
+func (h *sampleHandler) responseText(w http.ResponseWriter, req *http.Request, pathOffset int, message string) {
 	header := w.Header()
 	header.Set("Content-Type", "text/plain; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	txt := message + ": [" + req.URL.Path + "]\n"
+	var restPath string
+	if len(req.URL.Path) > pathOffset {
+		restPath = string(req.URL.Path[pathOffset:(len(req.URL.Path) - 1)])
+	} else {
+		restPath = fmt.Sprintf("-EMPTY; len(req.URL.Path)=%d; pathOffset=%d", len(req.URL.Path), pathOffset)
+	}
+	txt := message + ": [" + req.URL.Path + "]\nrest-path: [" + restPath + "]\n"
 	io.WriteString(w, txt)
-
 }
 
-func (h *sampleHandler) uniqueJSON(w http.ResponseWriter, req *http.Request, index, bound int, num int32) {
-	h.responseText(w, req, fmt.Sprintf("uniqueJSON(num=%d)", num))
+func (h *sampleHandler) queryProduct(w http.ResponseWriter, req *http.Request, pathOffset int, productName string) {
+	h.responseText(w, req, pathOffset, fmt.Sprintf("queryProduct(productName=%s)", productName))
 }
 
-func (h *sampleHandler) uniqueText(w http.ResponseWriter, req *http.Request, index, bound int, num int32) {
-	h.responseText(w, req, fmt.Sprintf("uniqueText(num=%d)", num))
+func (h *sampleHandler) downloadProduct(w http.ResponseWriter, req *http.Request, pathOffset int, sessionID, targetID int64) {
+	h.responseText(w, req, pathOffset, fmt.Sprintf("downloadProduct(sessionId=%d, targetId=%d)", sessionID, targetID))
+}
+
+func (h *sampleHandler) listProducts(w http.ResponseWriter, req *http.Request, pathOffset int) {
+	h.responseText(w, req, pathOffset, "listProducts()")
+}
+
+func (h *sampleHandler) showProduct(w http.ResponseWriter, req *http.Request, pathOffset int, productID int64) {
+	h.responseText(w, req, pathOffset, fmt.Sprintf("showProduct(sessionId=%d, productId=%d)", productID))
+}
+
+func (h *sampleHandler) sampleData(w http.ResponseWriter, req *http.Request, pathOffset int) {
+	h.responseText(w, req, pathOffset, "sampleData()")
+}
+
+func (h *sampleHandler) debugText(w http.ResponseWriter, req *http.Request, pathOffset int) {
+	h.responseText(w, req, pathOffset, "debugText()")
+}
+
+func (h *sampleHandler) debugJSON(w http.ResponseWriter, req *http.Request, pathOffset int) {
+	h.responseText(w, req, pathOffset, "debugJSON()")
+}
+
+func (h *sampleHandler) exactText(w http.ResponseWriter, req *http.Request, pathOffset int) {
+	h.responseText(w, req, pathOffset, "exactText()")
+}
+
+func (h *sampleHandler) debugNumber(w http.ResponseWriter, req *http.Request, pathOffset int, num int32) {
+	h.responseText(w, req, pathOffset, fmt.Sprintf("debugNumber(num=%d)", num))
+}
+
+func (h *sampleHandler) uniqueText(w http.ResponseWriter, req *http.Request, pathOffset int, num int32) {
+	h.responseText(w, req, pathOffset, fmt.Sprintf("uniqueText(num=%d)", num))
+}
+
+func (h *sampleHandler) uniqueJSON(w http.ResponseWriter, req *http.Request, pathOffset int, num int32) {
+	h.responseText(w, req, pathOffset, fmt.Sprintf("uniqueJSON(num=%d)", num))
 }
 
 func (h *sampleHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
@@ -36,5 +77,5 @@ func (h *sampleHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	} else if routedIdent > RouteSuccess {
 		return
 	}
-	h.responseText(w, req, "Last route")
+	h.responseText(w, req, 0, "Last route")
 }
