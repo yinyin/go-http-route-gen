@@ -8,7 +8,13 @@ go build github.com/yinyin/go-http-route-gen/dev-tool/get-bit-map
 
 # Sample HTTPd
 
-Build binary for sample HTTP server.
+Generate routing code:
+
+```sh
+./go-http-route-gen -in sample/route.yaml -out sample/handler_route.go  -package main -type sampleHandler
+```
+
+Build binary for sample HTTP server:
 
 ```sh
 go build -o sample-httpd github.com/yinyin/go-http-route-gen/sample
