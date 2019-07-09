@@ -83,6 +83,45 @@ func extractInt32BuiltInR02(v string, offset, bound int) (int32, int, error) {
 	return result, bound, nil
 }
 
+var filterMaskHexInt32BuiltInR03 = [...]uint16{0x7D, 0, 0x7D, 0x3FF}
+var offsetValueHexInt32BuiltInR03 = [...]byte{9, 0, 9, 0}
+
+func extractInt32BuiltInR03(v string, offset, bound int) (int32, int, error) {
+	if bound <= offset {
+		return 0, offset, errFragmentSmallerThanExpect
+	}
+	var result int32
+	for idx := offset; idx < bound; idx++ {
+		ch := v[idx]
+		digit := (ch & 0x0F)
+		page := ((ch >> 4) & 0x3)
+		if (filterMaskHexInt32BuiltInR03[page] & (1 << digit)) != 0 {
+			result = result<<4 | int32(digit+offsetValueHexInt32BuiltInR03[page])
+			continue
+		}
+		return result, idx, nil
+	}
+	return result, bound, nil
+}
+
+func extractUInt32BuiltInR03(v string, offset, bound int) (uint32, int, error) {
+	if bound <= offset {
+		return 0, offset, errFragmentSmallerThanExpect
+	}
+	var result uint32
+	for idx := offset; idx < bound; idx++ {
+		ch := v[idx]
+		digit := (ch & 0x0F)
+		page := ((ch >> 4) & 0x3)
+		if (filterMaskHexInt32BuiltInR03[page] & (1 << digit)) != 0 {
+			result = result<<4 | uint32(digit+offsetValueHexInt32BuiltInR03[page])
+			continue
+		}
+		return result, idx, nil
+	}
+	return result, bound, nil
+}
+
 func computePrefixMatchingDigest32(path string, offset, bound, length int) (uint32, int, error) {
 	b := offset + length
 	if b > bound {
@@ -198,7 +237,15 @@ func (h *sampleHandler) routeRequest(w http.ResponseWriter, req *http.Request) (
 			if num, reqPathOffset, err = extractInt32BuiltInR02(reqPath, reqPathOffset+14, reqPathBound); nil != err {
 				return RouteError, err
 			}
-			h.debugNumber(w, req, reqPathOffset+1, num)
+			var hex1 int32
+			if hex1, reqPathOffset, err = extractInt32BuiltInR03(reqPath, reqPathOffset+2, reqPathBound); nil != err {
+				return RouteError, err
+			}
+			var hex2 uint32
+			if hex2, reqPathOffset, err = extractUInt32BuiltInR03(reqPath, reqPathOffset+1, reqPathBound); nil != err {
+				return RouteError, err
+			}
+			h.debugNumber(w, req, reqPathOffset, num, hex1, hex2)
 			return RouteToDebugNumber, nil
 		}
 	} else if digest32 == 0x756e6971 {
