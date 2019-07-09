@@ -55,8 +55,8 @@ func (h *sampleHandler) exactText(w http.ResponseWriter, req *http.Request, path
 	h.responseText(w, req, pathOffset, "exactText()")
 }
 
-func (h *sampleHandler) debugNumber(w http.ResponseWriter, req *http.Request, pathOffset int, num int32) {
-	h.responseText(w, req, pathOffset, fmt.Sprintf("debugNumber(num=%d)", num))
+func (h *sampleHandler) debugNumber(w http.ResponseWriter, req *http.Request, pathOffset int, num, hex1 int32, hex2 uint32) {
+	h.responseText(w, req, pathOffset, fmt.Sprintf("debugNumber(num=%d, hex1=%v, hex2=%v)", num, hex1, hex2))
 }
 
 func (h *sampleHandler) uniqueText(w http.ResponseWriter, req *http.Request, pathOffset int, num int32) {
