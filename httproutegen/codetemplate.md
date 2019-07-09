@@ -419,7 +419,7 @@ var offsetValueHexInt32BuiltInR03 = [...]byte{9, 0, 9, 0}
 * `builder`: `makeCodeMethodExtractHexIntBuiltInR03`, `typeTitle string`, `typeName string`
 * `preserve-new-line`
 * `replace`:
-  - ``` extract(Int32)BuiltInR03\(v string, offset, bound int)\ \((int32), int, error\) ```
+  - ``` extract(Int32)BuiltInR03\(v string, offset, bound int\) \((int32), int, error\) ```
   - `$1`
   - ``` typeTitle ```
   - `$2`
