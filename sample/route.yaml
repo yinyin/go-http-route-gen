@@ -29,7 +29,7 @@ route:
     debug-sample/text
   route:
   - c: >
-      \{{0-9, num int32}\}
+      \{{0-9, num int32}\}/{0-9A-Fa-f, hex1 int32}/{0-9A-Fa-f, hex2 uint32}
     handler: "debugNumber"
   strict-prefix-match: "debug"
 
