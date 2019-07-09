@@ -185,6 +185,31 @@ func makeCodeMethodExtractUIntBuiltInR02(typeTitle string, typeName string) stri
 		"\n"
 }
 
+const codeSupportConstantsExtractHexIntBuiltInR03 = "var filterMaskHexInt32BuiltInR03 = [...]uint16{0x7D, 0, 0x7D, 0x3FF}\n" +
+	"var offsetValueHexInt32BuiltInR03 = [...]byte{9, 0, 9, 0}\n" +
+	"\n"
+
+func makeCodeMethodExtractHexIntBuiltInR03(typeTitle string, typeName string) string {
+	return "func extract" + (typeTitle) + "BuiltInR03(v string, offset, bound int) (" + (typeName) + ", int, error) {\n" +
+		"\tif bound <= offset {\n" +
+		"\t\treturn 0, offset, errFragmentSmallerThanExpect\n" +
+		"\t}\n" +
+		"\tvar result " + (typeName) + "\n" +
+		"\tfor idx := offset; idx < bound; idx++ {\n" +
+		"\t\tch := v[idx]\n" +
+		"\t\tdigit := (ch & 0x0F)\n" +
+		"\t\tpage := ((ch >> 4) & 0x3)\n" +
+		"\t\tif (filterMaskHexInt32BuiltInR03[page] & (1 << digit)) != 0 {\n" +
+		"\t\t\tresult = result<<4 | " + (typeName) + "(digit+offsetValueHexInt32BuiltInR03[page])\n" +
+		"\t\t\tcontinue\n" +
+		"\t\t}\n" +
+		"\t\treturn result, idx, nil\n" +
+		"\t}\n" +
+		"\treturn result, bound, nil\n" +
+		"}\n" +
+		"\n"
+}
+
 func makeCodeMethodExtractByteSliceStringBitMasked(typeTitle string, typeName string, typeCasting string, rangeBase byte, bitmaskIdent string, bitmaskSlice []uint32) string {
 	return "var filterMask" + (typeTitle) + "Rx" + (bitmaskIdent) + " = [...]uint32{0x" + (strconv.FormatInt(int64(bitmaskSlice[0]), 16)) + ", 0x" + (strconv.FormatInt(int64(bitmaskSlice[1]), 16)) + ", 0x" + (strconv.FormatInt(int64(bitmaskSlice[2]), 16)) + ", 0x" + (strconv.FormatInt(int64(bitmaskSlice[3]), 16)) + "}\n" +
 		"\n" +
