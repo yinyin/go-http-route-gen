@@ -191,6 +191,7 @@ func (inst *CodeGenerateInstance) generateExtractFunctionOfByteSliceString(seqIn
 
 func (inst *CodeGenerateInstance) generateSequenceExtractFunctions() (result string) {
 	inst.SequenceExtractFunctionName = make([]string, len(inst.symbolScope.FoundSequences))
+	hadCodeSupportConstantsExtractHexIntBuiltInR03 := false
 	for seqIndex, seqPart := range inst.symbolScope.FoundSequences {
 		b0, b1 := seqPart.ByteMap.ByteMap()
 		varType := seqPart.VariableType
@@ -225,6 +226,26 @@ func (inst *CodeGenerateInstance) generateSequenceExtractFunctions() (result str
 			case "uint64":
 				extractFuncName = "extractUInt64BuiltInR02"
 				result += makeCodeMethodExtractUIntBuiltInR02("UInt64", "uint64")
+			}
+		case (0x3FF000000000000 == b0) && (0x7E0000007E == b1) && (varConverter == ""):
+			inst.NeedErrFragmentSmallerThanExpect = true
+			if !hadCodeSupportConstantsExtractHexIntBuiltInR03 {
+				result += codeSupportConstantsExtractHexIntBuiltInR03
+				hadCodeSupportConstantsExtractHexIntBuiltInR03 = true
+			}
+			switch varType {
+			case "int32":
+				extractFuncName = "extractInt32BuiltInR03"
+				result += makeCodeMethodExtractHexIntBuiltInR03("Int32", "int32")
+			case "uint32":
+				extractFuncName = "extractUInt32BuiltInR03"
+				result += makeCodeMethodExtractHexIntBuiltInR03("UInt32", "uint32")
+			case "int64":
+				extractFuncName = "extractInt64BuiltInR03"
+				result += makeCodeMethodExtractHexIntBuiltInR03("Int64", "int64")
+			case "uint64":
+				extractFuncName = "extractUInt64BuiltInR03"
+				result += makeCodeMethodExtractHexIntBuiltInR03("UInt64", "uint64")
 			}
 		case ((varType == "string") || (varType == "[]byte")) && (varConverter == ""):
 			var extractFuncCode string
