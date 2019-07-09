@@ -185,7 +185,7 @@ func makeCodeMethodExtractUIntBuiltInR02(typeTitle string, typeName string) stri
 		"\n"
 }
 
-const codeSupportConstantsExtractHexIntBuiltInR03 = "var filterMaskHexInt32BuiltInR03 = [...]uint16{0x7D, 0, 0x7D, 0x3FF}\n" +
+const codeSupportConstantsExtractHexIntBuiltInR03 = "var filterMaskHexInt32BuiltInR03 = [...]uint16{0x7E, 0, 0x7E, 0x3FF}\n" +
 	"var offsetValueHexInt32BuiltInR03 = [...]byte{9, 0, 9, 0}\n" +
 	"\n"
 
