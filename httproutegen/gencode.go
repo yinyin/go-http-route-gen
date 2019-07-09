@@ -226,7 +226,7 @@ func (inst *CodeGenerateInstance) generateSequenceExtractFunctions() (result str
 				extractFuncName = "extractUInt64BuiltInR02"
 				result += makeCodeMethodExtractUIntBuiltInR02("UInt64", "uint64")
 			}
-		case ((varType == "string") || (varType == "[]byte]")) && (varConverter == ""):
+		case ((varType == "string") || (varType == "[]byte")) && (varConverter == ""):
 			var extractFuncCode string
 			extractFuncName, extractFuncCode = inst.generateExtractFunctionOfByteSliceString(seqIndex, seqPart)
 			result += extractFuncCode
