@@ -404,6 +404,48 @@ func extractUInt32BuiltInR02(v string, offset, bound int) (uint32, int, error) {
 }
 ```
 
+# Extract Function (0-9A-Fa-f => signed/unsigned int32/64, no-converter)
+
+* `builder`: `makeCodeMethodExtractHexIntBuiltInR03`, `typeTitle string`, `typeName string`
+* `preserve-new-line`
+* `replace`:
+  - ``` extract(Int32)BuiltInR03\(v string, offset, bound int)\ \((int32), int, error\) ```
+  - `$1`
+  - ``` typeTitle ```
+  - `$2`
+  - ``` typeName ```
+* `replace`:
+  - ``` var result (int32) ```
+  - `$1`
+  - ``` typeName ```
+* `replace`:
+  - ``` (int32)\(digit ```
+  - `$1`
+  - ``` typeName ```
+
+```go
+var filterMaskHexInt32BuiltInR03 = [...]uint16{0x7D, 0, 0x7D, 0x3FF}
+var offsetValueHexInt32BuiltInR03 = [...]byte{9, 0, 9, 0}
+
+func extractInt32BuiltInR03(v string, offset, bound int) (int32, int, error) {
+	if bound <= offset {
+		return 0, offset, errFragmentSmallerThanExpect
+	}
+	var result int32
+	for idx := offset; idx < bound; idx++ {
+		ch := v[idx]
+		digit := (ch & 0x0F)
+		page := ((ch >> 4) & 0x3)
+		if (filterMaskHexInt32BuiltInR03[page] & (1 << digit)) != 0 {
+			result = result<<4 | int32(digit+offsetValueHexInt32BuiltInR03[page])
+			continue
+		}
+		return result, idx, nil
+	}
+	return result, bound, nil
+}
+```
+
 # Extract Function (bit-map => []byte/string, no-converter)
 
 * `builder`: `makeCodeMethodExtractByteSliceStringBitMasked`, `typeTitle string`, `typeName string`, `typeCasting string`, `rangeBase byte`, `bitmaskIdent string`, `bitmaskSlice []uint32`
