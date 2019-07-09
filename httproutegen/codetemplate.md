@@ -404,6 +404,16 @@ func extractUInt32BuiltInR02(v string, offset, bound int) (uint32, int, error) {
 }
 ```
 
+# Extract Function Support Constants (0-9A-Fa-f => signed/unsigned int32/64, no-converter)
+
+* `const`: `codeSupportConstantsExtractHexIntBuiltInR03`
+* `preserve-new-line`
+
+```go
+var filterMaskHexInt32BuiltInR03 = [...]uint16{0x7D, 0, 0x7D, 0x3FF}
+var offsetValueHexInt32BuiltInR03 = [...]byte{9, 0, 9, 0}
+```
+
 # Extract Function (0-9A-Fa-f => signed/unsigned int32/64, no-converter)
 
 * `builder`: `makeCodeMethodExtractHexIntBuiltInR03`, `typeTitle string`, `typeName string`
@@ -424,9 +434,6 @@ func extractUInt32BuiltInR02(v string, offset, bound int) (uint32, int, error) {
   - ``` typeName ```
 
 ```go
-var filterMaskHexInt32BuiltInR03 = [...]uint16{0x7D, 0, 0x7D, 0x3FF}
-var offsetValueHexInt32BuiltInR03 = [...]byte{9, 0, 9, 0}
-
 func extractInt32BuiltInR03(v string, offset, bound int) (int32, int, error) {
 	if bound <= offset {
 		return 0, offset, errFragmentSmallerThanExpect
