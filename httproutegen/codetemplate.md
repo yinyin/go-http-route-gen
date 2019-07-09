@@ -410,7 +410,7 @@ func extractUInt32BuiltInR02(v string, offset, bound int) (uint32, int, error) {
 * `preserve-new-line`
 
 ```go
-var filterMaskHexInt32BuiltInR03 = [...]uint16{0x7D, 0, 0x7D, 0x3FF}
+var filterMaskHexInt32BuiltInR03 = [...]uint16{0x7E, 0, 0x7E, 0x3FF}
 var offsetValueHexInt32BuiltInR03 = [...]byte{9, 0, 9, 0}
 ```
 
