@@ -64,9 +64,9 @@ const codeFunctionComputePrefixMatching32 = "func computePrefixMatchingDigest32(
 	"}\n" +
 	"\n"
 
-func makeCodeBlockPrefixMatching32Start(routePrefix string, baseOffset int, digestLength int) string {
+func makeCodeBlockPrefixMatching32Start(routePrefix string, routeMissingIdent string, baseOffset int, digestLength int) string {
 	return "if digest32, reqPathOffset, err = computePrefixMatchingDigest32(reqPath, " + ("reqPathOffset" + codeTemplateGenIntPlus(baseOffset)) + ", reqPathBound, " + (strconv.FormatInt(int64(digestLength), 10)) + "); nil != err {\n" +
-		"\treturn " + (routePrefix + "RouteError") + ", err\n" +
+		"\treturn " + (pickNonEmptyIdent(routeMissingIdent, routePrefix+"RouteError")) + ", err\n" +
 		"}\n" +
 		"\n"
 }
@@ -78,16 +78,16 @@ func makeCodeBlockPrefixMatching32Fork(routePrefix string, digestValue uint32, r
 		"\n"
 }
 
-func makeCodeBlockFuzzyMatchingBoundCheckNonZero(routePrefix string, baseOffset int, fuzzyDepth int) string {
+func makeCodeBlockFuzzyMatchingBoundCheckNonZero(routePrefix string, routeMissingIdent string, baseOffset int, fuzzyDepth int) string {
 	return "if reqPathOffset = " + ("reqPathOffset" + codeTemplateGenIntPlus(baseOffset+fuzzyDepth)) + "; reqPathOffset >= reqPathBound {\n" +
-		"\treturn " + (routePrefix + "RouteIncomplete") + ", nil\n" +
+		"\treturn " + (pickNonEmptyIdent(routeMissingIdent, routePrefix+"RouteIncomplete")) + ", nil\n" +
 		"}\n" +
 		"\n"
 }
 
-func makeCodeBlockFuzzyMatchingBoundCheckZero(routePrefix string) string {
+func makeCodeBlockFuzzyMatchingBoundCheckZero(routePrefix string, routeMissingIdent string) string {
 	return "if reqPathOffset >= reqPathBound {\n" +
-		"\treturn " + (routePrefix + "RouteIncomplete") + ", nil\n" +
+		"\treturn " + (pickNonEmptyIdent(routeMissingIdent, routePrefix+"RouteIncomplete")) + ", nil\n" +
 		"}\n" +
 		"\n"
 }
@@ -113,10 +113,10 @@ func makeCodeBlockFuzzyMatchingU8U16Middle(fuzzyByteValue uint32, routingLogicCo
 		"\n"
 }
 
-func makeCodeBlockGetParameter(routePrefix string, paramName string, paramType string, extractFuncName string, baseOffset int, routingLogicCode string) string {
+func makeCodeBlockGetParameter(routePrefix string, routeMissingIdent string, paramName string, paramType string, extractFuncName string, baseOffset int, routingLogicCode string) string {
 	return "var " + (paramName) + " " + (paramType) + "\n" +
 		"if " + (paramName) + ", reqPathOffset, err = " + (extractFuncName) + "(reqPath, " + ("reqPathOffset" + codeTemplateGenIntPlus(baseOffset)) + ", reqPathBound); nil != err {\n" +
-		"\treturn " + (routePrefix + "RouteError") + ", err\n" +
+		"\treturn " + (pickNonEmptyIdent(routeMissingIdent, routePrefix+"RouteError")) + ", err\n" +
 		"}\n" +
 		(routingLogicCode) + "\n" +
 		"\n"
