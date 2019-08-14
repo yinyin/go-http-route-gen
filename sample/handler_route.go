@@ -15,6 +15,8 @@ const (
 	RouteNone RouteIdent = iota
 	RouteIncomplete
 	RouteError
+	RouteMissSampleAdmin
+	RouteMissDebugSample
 	RouteSuccess
 	RouteToQueryProduct
 	RouteToDownloadProduct
@@ -83,7 +85,7 @@ func extractInt32BuiltInR02(v string, offset, bound int) (int32, int, error) {
 	return result, bound, nil
 }
 
-var filterMaskHexInt32BuiltInR03 = [...]uint16{0x7D, 0, 0x7D, 0x3FF}
+var filterMaskHexInt32BuiltInR03 = [...]uint16{0x7E, 0, 0x7E, 0x3FF}
 var offsetValueHexInt32BuiltInR03 = [...]byte{9, 0, 9, 0}
 
 func extractInt32BuiltInR03(v string, offset, bound int) (int32, int, error) {
@@ -181,7 +183,7 @@ func (h *sampleHandler) routeRequest(w http.ResponseWriter, req *http.Request) (
 				return RouteToDownloadProduct, nil
 			} else if ch == 0x6e {
 				if reqPathOffset = reqPathOffset + 13; reqPathOffset >= reqPathBound {
-					return RouteIncomplete, nil
+					return RouteMissSampleAdmin, nil
 				}
 				if ch := reqPath[reqPathOffset]; ch == 0x73 {
 					h.listProducts(w, req, reqPathOffset+1)
@@ -189,11 +191,12 @@ func (h *sampleHandler) routeRequest(w http.ResponseWriter, req *http.Request) (
 				} else if ch == 0x2f {
 					var productId int64
 					if productId, reqPathOffset, err = extractInt64BuiltInR02(reqPath, reqPathOffset+1, reqPathBound); nil != err {
-						return RouteError, err
+						return RouteMissSampleAdmin, err
 					}
 					h.showProduct(w, req, reqPathOffset, productId)
 					return RouteToShowProduct, nil
 				}
+				return RouteMissSampleAdmin, nil
 			}
 		} else if digest32 == 0x6c652d64 {
 			if digest32, reqPathOffset, err = computePrefixMatchingDigest32(reqPath, reqPathOffset, reqPathBound, 3); nil != err {
@@ -231,23 +234,24 @@ func (h *sampleHandler) routeRequest(w http.ResponseWriter, req *http.Request) (
 		}
 	} else if digest32 == 0x64656275 {
 		if digest32, reqPathOffset, err = computePrefixMatchingDigest32(reqPath, reqPathOffset, reqPathBound, 1); nil != err {
-			return RouteError, err
+			return RouteMissDebugSample, err
 		} else if digest32 == 0x67 {
 			var num int32
 			if num, reqPathOffset, err = extractInt32BuiltInR02(reqPath, reqPathOffset+14, reqPathBound); nil != err {
-				return RouteError, err
+				return RouteMissDebugSample, err
 			}
 			var hex1 int32
 			if hex1, reqPathOffset, err = extractInt32BuiltInR03(reqPath, reqPathOffset+2, reqPathBound); nil != err {
-				return RouteError, err
+				return RouteMissDebugSample, err
 			}
 			var hex2 uint32
 			if hex2, reqPathOffset, err = extractUInt32BuiltInR03(reqPath, reqPathOffset+1, reqPathBound); nil != err {
-				return RouteError, err
+				return RouteMissDebugSample, err
 			}
 			h.debugNumber(w, req, reqPathOffset, num, hex1, hex2)
 			return RouteToDebugNumber, nil
 		}
+		return RouteMissDebugSample, nil
 	} else if digest32 == 0x756e6971 {
 		if reqPathOffset = reqPathOffset + 8; reqPathOffset >= reqPathBound {
 			return RouteIncomplete, nil
