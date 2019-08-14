@@ -11,12 +11,13 @@ func makeCodeTypeRouteIdent(routePrefix string) string {
 		"\n"
 }
 
-func makeCodeConstRouteIdent(routePrefix string, targetHandlerRouteIdents []string) string {
+func makeCodeConstRouteIdent(routePrefix string, coveredAreaRouteIdents []string, targetHandlerRouteIdents []string) string {
 	return "// Route identifiers.\n" +
 		"const (\n" +
 		"\t" + (routePrefix + "RouteNone " + routePrefix + "RouteIdent") + " = iota\n" +
 		"\t" + (routePrefix + "Route") + "Incomplete\n" +
-		"\t" + (routePrefix + "Route") + "Error\n" +
+		"    " + (routePrefix + "Route") + "Error\n" +
+		(strings.Join(coveredAreaRouteIdents, "\n")) + "\n" +
 		"\t" + (routePrefix + "Route") + "Success\n" +
 		(strings.Join(targetHandlerRouteIdents, "\n")) + "\n" +
 		")\n" +
