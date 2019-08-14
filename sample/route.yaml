@@ -4,6 +4,7 @@ route:
 - c: 'sample-api/download/{0-9, sessionId int64}/{0-9, targetId int64}'
   handler: "downloadProduct"
 - c: 'sample-admin-api'
+  area: "SampleAdmin"
   route:
   - c: 'products'
     handler: "listProducts"
@@ -27,6 +28,7 @@ route:
 
 - c: >
     debug-sample/text
+  area: "DebugSample"
   route:
   - c: >
       \{{0-9, num int32}\}/{0-9A-Fa-f, hex1 int32}/{0-9A-Fa-f, hex2 uint32}
