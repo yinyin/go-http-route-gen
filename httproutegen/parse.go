@@ -17,6 +17,7 @@ func shouldTrimFromComponent(ch rune) bool {
 type RouteEntry struct {
 	Ident             string        `yaml:"-" json:"component_ident,omitempty"`
 	Component         string        `yaml:"c,omitempty" json:"c,omitempty"`
+	AreaName          string        `yaml:"area,omitempty" json:"area,omitempty"`
 	HandlerName       string        `yaml:"handler,omitempty" json:"handler,omitempty"`
 	StrictPrefixMatch string        `yaml:"strict-prefix-match,omitempty" json:"strict_prefix_match,omitempty"`
 	StrictMatch       bool          `yaml:"strict-match,omitempty" json:"strict_match,omitempty"`
@@ -46,11 +47,22 @@ func (entry *RouteEntry) cleanupStrictPrefixMatch() {
 	entry.StrictPrefixMatch = strings.TrimLeftFunc(entry.StrictPrefixMatch, shouldTrimFromComponent)
 }
 
-func (entry *RouteEntry) verifyConfiguration(parentComponentIdent string) error {
+func (entry *RouteEntry) cleanupAreaName(parentAreaName string) {
+	areaName := []rune(strings.TrimSpace(entry.AreaName))
+	if len(areaName) > 0 {
+		areaName[0] = unicode.ToTitle(areaName[0])
+		entry.AreaName = string(areaName)
+	} else {
+		entry.AreaName = parentAreaName
+	}
+}
+
+func (entry *RouteEntry) verifyConfiguration(parentComponentIdent, parentAreaName string) error {
 	if err := entry.cleanupComponent(parentComponentIdent); nil != err {
 		return err
 	}
 	entry.cleanupStrictPrefixMatch()
+	entry.cleanupAreaName(parentAreaName)
 	componentIdent := entry.makeComponentIdent(parentComponentIdent)
 	entry.Ident = componentIdent
 	if ("" != entry.StrictPrefixMatch) && entry.StrictMatch {
@@ -80,7 +92,7 @@ func (entry *RouteEntry) verifyConfiguration(parentComponentIdent string) error 
 		}
 	}
 	for _, childEntry := range entry.Routes {
-		if err := childEntry.verifyConfiguration(componentIdent); nil != err {
+		if err := childEntry.verifyConfiguration(componentIdent, entry.AreaName); nil != err {
 			return err
 		}
 	}
@@ -97,7 +109,7 @@ func LoadYAML(configFilePath string) (routeEntry *RouteEntry, err error) {
 	if err = yaml.Unmarshal(buf, &routeEntryBuf); nil != err {
 		return
 	}
-	if err = routeEntryBuf.verifyConfiguration(""); nil != err {
+	if err = routeEntryBuf.verifyConfiguration("", ""); nil != err {
 		return
 	}
 	return &routeEntryBuf, nil
