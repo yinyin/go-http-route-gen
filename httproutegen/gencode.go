@@ -48,6 +48,7 @@ type CodeGenerateInstance struct {
 	NamePrefix      string
 
 	ImportModules []string
+	AreaNames     []string
 	HandlerNames  []string
 
 	SequenceExtractFunctionName []string
@@ -69,6 +70,7 @@ func OpenCodeGenerateInstance(codeFilePath string, rootFanoutFork *FanoutFork, s
 		symbolScope:    symbolScope,
 	}
 	inst.hasPrefixMatching(rootFanoutFork)
+	inst.collectAreaNames(rootFanoutFork)
 	inst.collectHandlerNames(rootFanoutFork)
 	inst.collectImportForErrors()
 	inst.addImportModule("net/http", false)
@@ -93,6 +95,16 @@ func (inst *CodeGenerateInstance) addImportModule(moduleName string, escaped boo
 		}
 	}
 	inst.ImportModules = append(inst.ImportModules, moduleName)
+}
+
+// addAreaName must invoke before `Generate()` code.
+func (inst *CodeGenerateInstance) addAreaName(areaName string) {
+	for _, arName := range inst.AreaNames {
+		if arName == areaName {
+			return
+		}
+	}
+	inst.AreaNames = append(inst.AreaNames, areaName)
 }
 
 // addHandlerName must invoke before `Generate()` code.
@@ -133,11 +145,25 @@ func (inst *CodeGenerateInstance) collectHandlerNames(fanoutFork *FanoutFork) {
 	}
 }
 
+func (inst *CodeGenerateInstance) collectAreaNames(fanoutFork *FanoutFork) {
+	if fanoutFork.AreaName != "" {
+		inst.addAreaName(fanoutFork.AreaName)
+		return
+	}
+	for _, childFork := range fanoutFork.ChildForks {
+		inst.collectAreaNames(childFork)
+	}
+}
+
 func (inst *CodeGenerateInstance) collectImportForErrors() {
 	switch {
 	case inst.NeedErrFragmentSmallerThanExpect:
 		inst.addImportModule("errors", false)
 	}
+}
+
+func (inst *CodeGenerateInstance) makeRouteMissingName(areaName string) string {
+	return inst.NamePrefix + "RouteMiss" + areaName
 }
 
 func (inst *CodeGenerateInstance) makeRouteIdentName(handlerName string) string {
@@ -147,11 +173,15 @@ func (inst *CodeGenerateInstance) makeRouteIdentName(handlerName string) string 
 }
 
 func (inst *CodeGenerateInstance) generateRouteIdentDefinitionListCode() string {
+	var routeMissingNames []string
+	for _, areaName := range inst.AreaNames {
+		routeMissingNames = append(routeMissingNames, inst.makeRouteMissingName(areaName))
+	}
 	var routeIdentNames []string
 	for _, handlerName := range inst.HandlerNames {
 		routeIdentNames = append(routeIdentNames, inst.makeRouteIdentName(handlerName))
 	}
-	return makeCodeConstRouteIdent(inst.NamePrefix, routeIdentNames)
+	return makeCodeConstRouteIdent(inst.NamePrefix, routeMissingNames, routeIdentNames)
 }
 
 func (inst *CodeGenerateInstance) generateExtractFunctionOfByteSliceString(seqIndex int, seqPart *SequencePart) (extractFuncName, result string) {
