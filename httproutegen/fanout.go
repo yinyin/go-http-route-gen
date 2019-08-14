@@ -200,11 +200,28 @@ func isTerminateSerialsCoveredFanoutSymbol(terminateSerials []int32, symbol Fano
 type FanoutLiteralDigestSet struct {
 	TerminateSerials []int32
 	Value            uint32
+	AreaNames        []string
 }
 
 // Covered check if given symbol is covered in this digest set
 func (s *FanoutLiteralDigestSet) Covered(symbol FanoutSymbol) bool {
 	return isTerminateSerialsCoveredFanoutSymbol(s.TerminateSerials, symbol)
+}
+
+// attachCandidateAreaName unique add given areaName to AreaNames.
+func (s *FanoutLiteralDigestSet) attachCandidateAreaName(areaName string) {
+	for _, n := range s.AreaNames {
+		if n == areaName {
+			return
+		}
+	}
+	s.AreaNames = append(s.AreaNames, areaName)
+}
+
+// AttachFanoutEntry properties of fanoutEntry to this FanoutLiteralDigestSet.
+func (s *FanoutLiteralDigestSet) AttachFanoutEntry(fanoutEntry *FanoutEntry) {
+	s.TerminateSerials = append(s.TerminateSerials, fanoutEntry.GetTerminateSerials()...)
+	s.attachCandidateAreaName(fanoutEntry.Route.AreaName)
 }
 
 // FanoutLiteralDigestPartition is a group of FanoutLiteralDigestSet
@@ -235,7 +252,7 @@ func (p *FanoutLiteralDigestPartition) FeedSymbols(symbols []FanoutSymbol) {
 		attached := false
 		for _, s := range updatedSet {
 			if s.Value == digestValue {
-				s.TerminateSerials = append(s.TerminateSerials, sym.Fanout.GetTerminateSerials()...)
+				s.AttachFanoutEntry(sym.Fanout)
 				attached = true
 				break
 			}
@@ -244,7 +261,7 @@ func (p *FanoutLiteralDigestPartition) FeedSymbols(symbols []FanoutSymbol) {
 			aux := FanoutLiteralDigestSet{
 				Value: digestValue,
 			}
-			aux.TerminateSerials = append(aux.TerminateSerials, sym.Fanout.GetTerminateSerials()...)
+			aux.AttachFanoutEntry(sym.Fanout)
 			updatedSet = append(updatedSet, &aux)
 		}
 	}
@@ -485,6 +502,9 @@ func (fork *FanoutFork) makeNextStageForksFromPrefixMatching() (nextStageForks [
 		aux := FanoutFork{
 			BaseOffset: 0, // fork.BaseOffset + fork.PrefixLiteralDigests.Depth,
 			AreaName:   fork.AreaName,
+		}
+		if len(s.AreaNames) == 1 {
+			aux.AreaName = s.AreaNames[0]
 		}
 		aux.CoveredTerminals = append(aux.CoveredTerminals, s.TerminateSerials...)
 		aux.AvailableSequenceVarName = append(aux.AvailableSequenceVarName, fork.AvailableSequenceVarName...)
