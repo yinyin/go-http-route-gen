@@ -200,7 +200,6 @@ func isTerminateSerialsCoveredFanoutSymbol(terminateSerials []int32, symbol Fano
 type FanoutLiteralDigestSet struct {
 	TerminateSerials []int32
 	Value            uint32
-	AreaNames        []string
 }
 
 // Covered check if given symbol is covered in this digest set
@@ -208,20 +207,9 @@ func (s *FanoutLiteralDigestSet) Covered(symbol FanoutSymbol) bool {
 	return isTerminateSerialsCoveredFanoutSymbol(s.TerminateSerials, symbol)
 }
 
-// attachCandidateAreaName unique add given areaName to AreaNames.
-func (s *FanoutLiteralDigestSet) attachCandidateAreaName(areaName string) {
-	for _, n := range s.AreaNames {
-		if n == areaName {
-			return
-		}
-	}
-	s.AreaNames = append(s.AreaNames, areaName)
-}
-
 // AttachFanoutEntry properties of fanoutEntry to this FanoutLiteralDigestSet.
 func (s *FanoutLiteralDigestSet) AttachFanoutEntry(fanoutEntry *FanoutEntry) {
 	s.TerminateSerials = append(s.TerminateSerials, fanoutEntry.GetTerminateSerials()...)
-	s.attachCandidateAreaName(fanoutEntry.Route.AreaName)
 }
 
 // FanoutLiteralDigestPartition is a group of FanoutLiteralDigestSet
@@ -416,6 +404,26 @@ func (fork *FanoutFork) IsTipAreaFork() bool {
 	return true
 }
 
+// ErodeAreaName set area name to children area name if area name of children forks are the same.
+func (fork *FanoutFork) ErodeAreaName() {
+	if len(fork.ChildForks) == 0 {
+		return
+	}
+	doErode := true
+	erodedAreaName := fork.ChildForks[0].AreaName
+	for _, childFork := range fork.ChildForks[1:] {
+		if childFork.AreaName != erodedAreaName {
+			doErode = false
+		}
+	}
+	for _, childFork := range fork.ChildForks {
+		childFork.ErodeAreaName()
+	}
+	if doErode {
+		fork.AreaName = erodedAreaName
+	}
+}
+
 // Covered check if given fanout-symbol is covered by this fork.
 func (fork *FanoutFork) Covered(fanoutSymbol FanoutSymbol) bool {
 	return isTerminateSerialsCoveredFanoutSymbol(fork.CoveredTerminals, fanoutSymbol)
@@ -502,9 +510,6 @@ func (fork *FanoutFork) makeNextStageForksFromPrefixMatching() (nextStageForks [
 		aux := FanoutFork{
 			BaseOffset: 0, // fork.BaseOffset + fork.PrefixLiteralDigests.Depth,
 			AreaName:   fork.AreaName,
-		}
-		if len(s.AreaNames) == 1 {
-			aux.AreaName = s.AreaNames[0]
 		}
 		aux.CoveredTerminals = append(aux.CoveredTerminals, s.TerminateSerials...)
 		aux.AvailableSequenceVarName = append(aux.AvailableSequenceVarName, fork.AvailableSequenceVarName...)
@@ -742,13 +747,6 @@ func (s *FanoutForkSlice) AttachParentFork(fork *FanoutFork) {
 	}
 }
 
-// UpdateAreaName set area name of fork to given areaName.
-func (s *FanoutForkSlice) UpdateAreaName(areaName string) {
-	for _, fo := range s.Forks {
-		fo.AreaName = areaName
-	}
-}
-
 func (s *FanoutForkSlice) distributeSymbols(symbols []FanoutSymbol) [][]FanoutSymbol {
 	symbolBuckets := make([][]FanoutSymbol, len(s.Forks))
 	for _, sym := range symbols {
@@ -768,6 +766,21 @@ func (s *FanoutForkSlice) distributeSymbols(symbols []FanoutSymbol) [][]FanoutSy
 	return symbolBuckets
 }
 
+// AssignAreaName set area name if symbols for fork is not divergent.
+func (s *FanoutForkSlice) AssignAreaName(symbols []FanoutSymbol) {
+	symbolBuckets := s.distributeSymbols(symbols)
+	for idx, fanout := range s.Forks {
+		if len(symbolBuckets[idx]) == 0 {
+			continue
+		}
+		areaName, isDivergent := CollectAreaNameFromFanoutSymbols(symbolBuckets[idx])
+		if isDivergent {
+			continue
+		}
+		fanout.AreaName = areaName
+	}
+}
+
 // FeedSymbols feed symbols into covered FanoutFork.
 // The slice will be update if fork is forked further.
 func (s *FanoutForkSlice) FeedSymbols(symbols []FanoutSymbol, symbolDepth int) error {
@@ -778,7 +791,6 @@ func (s *FanoutForkSlice) FeedSymbols(symbols []FanoutSymbol, symbolDepth int) e
 			updatedForks = append(updatedForks, fanout)
 			continue
 		}
-		areaName, isDivergent := CollectAreaNameFromFanoutSymbols(symbolBuckets[idx])
 		if reject, nextStageForks, err := fanout.FeedSymbols(symbolBuckets[idx], symbolDepth); nil != err {
 			return err
 		} else if len(nextStageForks) > 0 {
@@ -786,14 +798,12 @@ func (s *FanoutForkSlice) FeedSymbols(symbols []FanoutSymbol, symbolDepth int) e
 				Forks: nextStageForks,
 			}
 			subSlice.AttachParentFork(fanout)
-			if !isDivergent {
-				subSlice.UpdateAreaName(areaName)
-			}
 			if reject {
 				if err = subSlice.FeedSymbols(symbolBuckets[idx], symbolDepth); nil != err {
 					return err
 				}
 			}
+			subSlice.AssignAreaName(symbolBuckets[idx])
 			updatedForks = append(updatedForks, subSlice.Forks...)
 		} else {
 			if reject {
@@ -845,6 +855,7 @@ func (instance *FanoutInstance) ExpandFanout() (err error) {
 		symbols = instance.RootFanoutEntry.GetSymbol(depth)
 	}
 	rootFanoutFork.SealTerminateFork(instance.RootFanoutEntry)
+	// rootFanoutFork.ErodeAreaName()
 	instance.RootFanoutFork = rootFanoutFork
 	return nil
 }
