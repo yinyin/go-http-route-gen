@@ -28,8 +28,12 @@ type RouteIdent int
 
 # Default Route Idents
 
-* `builder`: `makeCodeConstRouteIdent`, `routePrefix string`, `targetHandlerRouteIdents []string`
+* `builder`: `makeCodeConstRouteIdent`, `routePrefix string`, `coveredAreaRouteIdents []string`, `targetHandlerRouteIdents []string`
 * `preserve-new-line`
+* `replace`:
+  - ``` (\s*RouteMissingCoveredArea) ```
+  - `$1`
+  - ``` strings.Join(coveredAreaRouteIdents, "\n") ```
 * `replace`:
   - ``` (\s*RouteToTargetHandler) ```
   - `$1`
@@ -48,7 +52,8 @@ type RouteIdent int
 const (
 	RouteNone RouteIdent = iota
 	RouteIncomplete
-	RouteError
+    RouteError
+    RouteMissingCoveredArea
 	RouteSuccess
 	RouteToTargetHandler
 )
