@@ -137,7 +137,7 @@ func computePrefixMatchingDigest32(path string, offset, bound, length int) (uint
 
 # Code of Prefix Matching Logic (Start)
 
-* `builder`: `makeCodeBlockPrefixMatching32Start`, `routePrefix string`, `baseOffset int`, `digestLength int`
+* `builder`: `makeCodeBlockPrefixMatching32Start`, `routePrefix string`, `routeMissingIdent string`, `baseOffset int`, `digestLength int`
 * `preserve-new-line`
 * `replace`:
   - ``` reqPath, (reqPathOffset), reqPathBound ```
@@ -146,7 +146,7 @@ func computePrefixMatchingDigest32(path string, offset, bound, length int) (uint
 * `replace`:
   - ``` (RouteError) ```
   - `$1`
-  - ``` routePrefix + "RouteError" ```
+  - ``` pickNonEmptyIdent(routeMissingIdent, routePrefix + "RouteError") ```
 * `replace`:
   - ``` (DigestLen) ```
   - `$1`
@@ -179,7 +179,7 @@ else if digest32 == DigestValue {
 
 # Code of Fuzzy Matching Logic (Boundary Check, Non-zero)
 
-* `builder`: `makeCodeBlockFuzzyMatchingBoundCheckNonZero`, `routePrefix string`, `baseOffset int`, `fuzzyDepth int`
+* `builder`: `makeCodeBlockFuzzyMatchingBoundCheckNonZero`, `routePrefix string`, `routeMissingIdent string`, `baseOffset int`, `fuzzyDepth int`
 * `preserve-new-line`
 * `replace`:
   - ``` reqPathOffset = (reqPathOffset \+ 3) ```
@@ -188,7 +188,7 @@ else if digest32 == DigestValue {
 * `replace`:
   - ``` (RouteIncomplete) ```
   - `$1`
-  - ``` routePrefix + "RouteIncomplete" ```
+  - ``` pickNonEmptyIdent(routeMissingIdent, routePrefix + "RouteIncomplete") ```
 
 ```go
 if reqPathOffset = reqPathOffset + 3; reqPathOffset >= reqPathBound {
@@ -198,12 +198,12 @@ if reqPathOffset = reqPathOffset + 3; reqPathOffset >= reqPathBound {
 
 # Code of Fuzzy Matching Logic (Boundary Check, Zero)
 
-* `builder`: `makeCodeBlockFuzzyMatchingBoundCheckZero`, `routePrefix string`
+* `builder`: `makeCodeBlockFuzzyMatchingBoundCheckZero`, `routePrefix string`, `routeMissingIdent string`
 * `preserve-new-line`
 * `replace`:
   - ``` (RouteIncomplete) ```
   - `$1`
-  - ``` routePrefix + "RouteIncomplete" ```
+  - ``` pickNonEmptyIdent(routeMissingIdent, routePrefix + "RouteIncomplete") ```
 
 ```go
 if reqPathOffset >= reqPathBound {
@@ -270,7 +270,7 @@ else if ch == FuzzyByte {
 
 # Get Parameter
 
-* `builder`: `makeCodeBlockGetParameter`, `routePrefix string`, `paramName string`, `paramType string`, `extractFuncName string`, `baseOffset int`, `routingLogicCode string`
+* `builder`: `makeCodeBlockGetParameter`, `routePrefix string`, `routeMissingIdent string`, `paramName string`, `paramType string`, `extractFuncName string`, `baseOffset int`, `routingLogicCode string`
 * `preserve-new-line`
 * `replace`:
   - ``` var (paramName) (string) ```
@@ -289,7 +289,7 @@ else if ch == FuzzyByte {
 * `replace`:
   - ``` (RouteError) ```
   - `$1`
-  - ``` routePrefix + "RouteError" ```
+  - ``` pickNonEmptyIdent(routeMissingIdent, routePrefix + "RouteError") ```
 * `replace`:
   - ``` (\s*InvokeRoutingLogic\(\)) ```
   - `$1`
