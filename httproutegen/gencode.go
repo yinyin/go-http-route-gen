@@ -354,7 +354,6 @@ func (inst *CodeGenerateInstance) generateFuzzyMatchingU8(fanoutFork *FanoutFork
 		}
 		result += strings.TrimRightFunc(codeBlock, unicode.IsSpace)
 	}
-	result += "\n"
 	return
 }
 
@@ -362,15 +361,13 @@ func (inst *CodeGenerateInstance) generateFuzzyMatchingU16(fanoutFork *FanoutFor
 	result = inst.generateFuzzyMatchingBoundCheck(fanoutFork, fanoutFork.FuzzyTracker.BestU16Depth)
 	for idx, trackSet := range fanoutFork.FuzzyTracker.BestU16 {
 		subRoutingCode := inst.generateSubForkFanoutCode(fanoutFork, trackSet.TerminateSerials)
+		var codeBlock string
 		if idx == 0 {
-			result += makeCodeBlockFuzzyMatchingU16Start(trackSet.Value, subRoutingCode)
+			codeBlock = makeCodeBlockFuzzyMatchingU16Start(trackSet.Value, subRoutingCode)
 		} else {
-			result += makeCodeBlockFuzzyMatchingU8U16Middle(trackSet.Value, subRoutingCode)
+			codeBlock = makeCodeBlockFuzzyMatchingU8U16Middle(trackSet.Value, subRoutingCode)
 		}
-	}
-	if fanoutFork.IsTipAreaFork() {
-		routeMissingIdentName := inst.makeRouteMissingName(fanoutFork.AreaName)
-		result += "return " + routeMissingIdentName + ", nil\n"
+		result += strings.TrimRightFunc(codeBlock, unicode.IsSpace)
 	}
 	return
 }
@@ -378,11 +375,18 @@ func (inst *CodeGenerateInstance) generateFuzzyMatchingU16(fanoutFork *FanoutFor
 func (inst *CodeGenerateInstance) generateFuzzyMatching(fanoutFork *FanoutFork) (result string) {
 	switch fanoutFork.FuzzyModeBit {
 	case 8:
-		return inst.generateFuzzyMatchingU8(fanoutFork)
+		result = inst.generateFuzzyMatchingU8(fanoutFork)
 	case 16:
-		return inst.generateFuzzyMatchingU16(fanoutFork)
+		result = inst.generateFuzzyMatchingU16(fanoutFork)
+	default:
+		return fmt.Sprintf("// ERROR(generateFuzzyMatching): unknown fuzzy mode bit - %d.", fanoutFork.FuzzyModeBit)
 	}
-	return fmt.Sprintf("// ERROR(generateFuzzyMatching): unknown fuzzy mode bit - %d.", fanoutFork.FuzzyModeBit)
+	result += "\n"
+	if fanoutFork.IsTipAreaFork() {
+		routeMissingIdentName := inst.makeRouteMissingName(fanoutFork.AreaName)
+		result += "return " + routeMissingIdentName + ", nil\n"
+	}
+	return
 }
 
 func (inst *CodeGenerateInstance) generateGetParameter(fanoutFork *FanoutFork) (result string) {
