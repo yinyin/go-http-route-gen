@@ -12,6 +12,20 @@ type FanoutSymbol struct {
 	Symbol *Symbol
 }
 
+// CollectAreaNameFromFanoutSymbols get area name from symbols and check if divergent.
+func CollectAreaNameFromFanoutSymbols(fanoutSymbols []FanoutSymbol) (areaName string, isDivergent bool) {
+	if len(fanoutSymbols) < 1 {
+		return
+	}
+	areaName = fanoutSymbols[0].Fanout.Route.AreaName
+	for _, fanoutSymbol := range fanoutSymbols[1:] {
+		if fanoutSymbol.Fanout.Route.AreaName != areaName {
+			isDivergent = true
+		}
+	}
+	return
+}
+
 // FanoutEntry map to a RouteEntry to represent progress of route fanout.
 type FanoutEntry struct {
 	Serial                 int32          `json:"fanout_serial,omitempty"`
@@ -352,6 +366,7 @@ type FanoutFork struct {
 	CoveredTerminals []int32             `json:"convered_terminals"`
 	ParentFork       *FanoutFork         `json:"-"`
 	ChildForks       []*FanoutFork       `json:"child_forks,omitempty"`
+	AreaName         string              `json:"area,omitempty"`
 	LogicType        FanoutForkLogicType `json:"logic_type"`
 
 	BaseOffset int `json:"base_offset"`
@@ -454,6 +469,7 @@ func (fork *FanoutFork) makeNextStageForksFromPrefixMatching() (nextStageForks [
 	for _, s := range fork.PrefixLiteralDigests.Digests {
 		aux := FanoutFork{
 			BaseOffset: 0, // fork.BaseOffset + fork.PrefixLiteralDigests.Depth,
+			AreaName:   fork.AreaName,
 		}
 		aux.CoveredTerminals = append(aux.CoveredTerminals, s.TerminateSerials...)
 		aux.AvailableSequenceVarName = append(aux.AvailableSequenceVarName, fork.AvailableSequenceVarName...)
@@ -516,6 +532,7 @@ func (fork *FanoutFork) makeNextStageForksFromFuzzyMatching() (nextStageForks []
 	for _, s := range trackSet {
 		aux := FanoutFork{
 			BaseOffset: fork.FuzzyTracker.Depth - trackDepth, // fork.BaseOffset + fork.FuzzyTracker.Depth,
+			AreaName:   fork.AreaName,
 		}
 		aux.CoveredTerminals = append(aux.CoveredTerminals, s.TerminateSerials...)
 		aux.AvailableSequenceVarName = append(aux.AvailableSequenceVarName, fork.AvailableSequenceVarName...)
@@ -558,6 +575,7 @@ func (fork *FanoutFork) feedSymbolsToFuzzyMatching(symbols []FanoutSymbol, symbo
 func (fork *FanoutFork) makeNextStageForksFromGetParameter() (nextStageForks []*FanoutFork) {
 	aux := FanoutFork{
 		CoveredTerminals: fork.CoveredTerminals,
+		AreaName:         fork.AreaName,
 	}
 	aux.AvailableSequenceVarName = append(aux.AvailableSequenceVarName, fork.AvailableSequenceVarName...)
 	nextStageForks = append(nextStageForks, &aux)
@@ -632,6 +650,7 @@ func (fork *FanoutFork) sealThisFork(rootFanoutEntry *FanoutEntry) (stopPropagat
 		fork.InvokeHandlerFanout = handlerFanout
 	} else {
 		aux := FanoutFork{
+			AreaName:            fork.AreaName,
 			LogicType:           LogicTypeInvokeHandler,
 			CoveredTerminals:    fork.CoveredTerminals,
 			ParentFork:          fork,
@@ -688,6 +707,13 @@ func (s *FanoutForkSlice) AttachParentFork(fork *FanoutFork) {
 	}
 }
 
+// UpdateAreaName set area name of fork to given areaName.
+func (s *FanoutForkSlice) UpdateAreaName(areaName string) {
+	for _, fo := range s.Forks {
+		fo.AreaName = areaName
+	}
+}
+
 func (s *FanoutForkSlice) distributeSymbols(symbols []FanoutSymbol) [][]FanoutSymbol {
 	symbolBuckets := make([][]FanoutSymbol, len(s.Forks))
 	for _, sym := range symbols {
@@ -717,6 +743,7 @@ func (s *FanoutForkSlice) FeedSymbols(symbols []FanoutSymbol, symbolDepth int) e
 			updatedForks = append(updatedForks, fanout)
 			continue
 		}
+		areaName, isDivergent := CollectAreaNameFromFanoutSymbols(symbolBuckets[idx])
 		if reject, nextStageForks, err := fanout.FeedSymbols(symbolBuckets[idx], symbolDepth); nil != err {
 			return err
 		} else if len(nextStageForks) > 0 {
@@ -724,6 +751,9 @@ func (s *FanoutForkSlice) FeedSymbols(symbols []FanoutSymbol, symbolDepth int) e
 				Forks: nextStageForks,
 			}
 			subSlice.AttachParentFork(fanout)
+			if !isDivergent {
+				subSlice.UpdateAreaName(areaName)
+			}
 			if reject {
 				if err = subSlice.FeedSymbols(symbolBuckets[idx], symbolDepth); nil != err {
 					return err
@@ -765,6 +795,7 @@ func MakeFanoutInstance(rootRouteEntry *RouteEntry) (instance *FanoutInstance, e
 func (instance *FanoutInstance) ExpandFanout() (err error) {
 	rootFanoutFork := &FanoutFork{
 		CoveredTerminals: instance.RootFanoutEntry.TerminateSerials,
+		AreaName:         instance.RootFanoutEntry.Route.AreaName,
 	}
 	fanoutForks := FanoutForkSlice{
 		Forks: []*FanoutFork{rootFanoutFork},
