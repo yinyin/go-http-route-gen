@@ -384,6 +384,21 @@ type FanoutFork struct {
 	InvokeHandlerFanout *FanoutEntry `json:"invoke_handler,omitempty"`
 }
 
+// IsTipAreaFork return if this fork is tip of current area fork.
+// Always return false if AreaName is empty.
+func (fork *FanoutFork) IsTipAreaFork() bool {
+	if fork.AreaName == "" {
+		return false
+	}
+	if (fork.ParentFork == nil) || (fork.ParentFork == fork) {
+		return true
+	}
+	if fork.ParentFork.AreaName == fork.AreaName {
+		return false
+	}
+	return true
+}
+
 // Covered check if given fanout-symbol is covered by this fork.
 func (fork *FanoutFork) Covered(fanoutSymbol FanoutSymbol) bool {
 	return isTerminateSerialsCoveredFanoutSymbol(fork.CoveredTerminals, fanoutSymbol)
