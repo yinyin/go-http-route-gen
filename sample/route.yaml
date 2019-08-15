@@ -1,30 +1,39 @@
 route:
 - c: 'sample-api/query/{a-zA-Z0-9\-, productName string}'
-  handler: "queryProduct"
+  handler:
+    get: "queryProduct"
+    post: "=get"
 - c: 'sample-api/download/{0-9, sessionId int64}/{0-9, targetId int64}'
-  handler: "downloadProduct"
+  handler:
+    get: "downloadProduct"
 - c: 'sample-admin-api'
   area: "SampleAdmin"
   route:
   - c: 'products'
-    handler: "listProducts"
+    handler:
+      get: "listProducts"
   - c: 'product/{0-9, productId int64}'
-    handler: "showProduct"
+    handler:
+      get: "showProduct"
   strict-prefix-match: "sample-"  # will apply to all matched components
 
 - c: 'sample-data'
-  handler: "sampleData"
+  handler:
+    get: "sampleData"
   strict-match: true
 - c: 'sample-exact/text'
-  handler: "exactText"
+  handler:
+    get: "exactText"
   strict-match: true
 
 - c: >
     sample-debug/text
-  handler: "debugText"
+  handler:
+    get: "debugText"
 - c: >
     sample-debug/json
-  handler: "debugJSON"
+  handler:
+    get: "debugJSON"
 
 - c: >
     debug-sample/text
@@ -32,12 +41,15 @@ route:
   route:
   - c: >
       \{{0-9, num int32}\}/{0-9A-Fa-f, hex1 int32}/{0-9A-Fa-f, hex2 uint32}
-    handler: "debugNumber"
+    handler:
+      get: "debugNumber"
   strict-prefix-match: "debug"
 
 - c: >
     unique-path/text/{0-9, num int32}
-  handler: "uniqueText"
+  handler:
+    get: "uniqueText"
 - c: >
     unique-path/json/{0-9, num int32}
-  handler: "uniqueJSON"
+  handler:
+    get: "uniqueJSON"
