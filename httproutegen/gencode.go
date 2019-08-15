@@ -171,14 +171,14 @@ func (inst *CodeGenerateInstance) collectImportForErrors() {
 	}
 }
 
-func (inst *CodeGenerateInstance) makeRouteMissingName(areaName string) string {
+func (inst *CodeGenerateInstance) makeRouteMissingIdentName(areaName string) string {
 	if "" == areaName {
 		return ""
 	}
 	return inst.NamePrefix + "RouteMiss" + areaName
 }
 
-func (inst *CodeGenerateInstance) makeRouteIdentName(handlerName string) string {
+func (inst *CodeGenerateInstance) makeRouteTargetIdentName(handlerName string) string {
 	hnd := []rune(handlerName)
 	hnd[0] = unicode.ToTitle(hnd[0])
 	return inst.NamePrefix + "RouteTo" + string(hnd)
@@ -187,13 +187,13 @@ func (inst *CodeGenerateInstance) makeRouteIdentName(handlerName string) string 
 func (inst *CodeGenerateInstance) generateRouteIdentDefinitionListCode() string {
 	var routeMissingNames []string
 	for _, areaName := range inst.AreaNames {
-		routeMissingNames = append(routeMissingNames, inst.makeRouteMissingName(areaName))
+		routeMissingNames = append(routeMissingNames, inst.makeRouteMissingIdentName(areaName))
 	}
-	var routeIdentNames []string
+	var routeTargetNames []string
 	for _, handlerName := range inst.HandlerNames {
-		routeIdentNames = append(routeIdentNames, inst.makeRouteIdentName(handlerName))
+		routeTargetNames = append(routeTargetNames, inst.makeRouteTargetIdentName(handlerName))
 	}
-	return makeCodeConstRouteIdent(inst.NamePrefix, routeMissingNames, routeIdentNames)
+	return makeCodeConstRouteIdent(inst.NamePrefix, routeMissingNames, routeTargetNames)
 }
 
 func (inst *CodeGenerateInstance) generateExtractFunctionOfByteSliceString(seqIndex int, seqPart *SequencePart) (extractFuncName, result string) {
@@ -318,7 +318,7 @@ func (inst *CodeGenerateInstance) generateSubForkFanoutCode(fanoutFork *FanoutFo
 }
 
 func (inst *CodeGenerateInstance) generatePrefixMatching(fanoutFork *FanoutFork) (result string) {
-	routeMissingIdentName := inst.makeRouteMissingName(fanoutFork.AreaName)
+	routeMissingIdentName := inst.makeRouteMissingIdentName(fanoutFork.AreaName)
 	result = makeCodeBlockPrefixMatching32Start(inst.NamePrefix, routeMissingIdentName, fanoutFork.BaseOffset, fanoutFork.PrefixLiteralDigests.Depth)
 	result = strings.TrimRightFunc(result, unicode.IsSpace)
 	for _, digestSet := range fanoutFork.PrefixLiteralDigests.Digests {
@@ -335,7 +335,7 @@ func (inst *CodeGenerateInstance) generatePrefixMatching(fanoutFork *FanoutFork)
 }
 
 func (inst *CodeGenerateInstance) generateFuzzyMatchingBoundCheck(fanoutFork *FanoutFork, bestDepth int) (result string) {
-	routeMissingIdentName := inst.makeRouteMissingName(fanoutFork.AreaName)
+	routeMissingIdentName := inst.makeRouteMissingIdentName(fanoutFork.AreaName)
 	if offsetSum := fanoutFork.BaseOffset + bestDepth; 0 != offsetSum {
 		return makeCodeBlockFuzzyMatchingBoundCheckNonZero(inst.NamePrefix, routeMissingIdentName, fanoutFork.BaseOffset, bestDepth)
 	}
@@ -383,7 +383,7 @@ func (inst *CodeGenerateInstance) generateFuzzyMatching(fanoutFork *FanoutFork) 
 	}
 	result += "\n"
 	if fanoutFork.IsTipAreaFork() {
-		routeMissingIdentName := inst.makeRouteMissingName(fanoutFork.AreaName)
+		routeMissingIdentName := inst.makeRouteMissingIdentName(fanoutFork.AreaName)
 		result += "return " + routeMissingIdentName + ", nil\n"
 	}
 	return
@@ -393,7 +393,7 @@ func (inst *CodeGenerateInstance) generateGetParameter(fanoutFork *FanoutFork) (
 	seqIndex := fanoutFork.SequenceIndex
 	seqPart := inst.symbolScope.FoundSequences[seqIndex]
 	extractFuncName := inst.SequenceExtractFunctionName[seqIndex]
-	routeMissingIdentName := inst.makeRouteMissingName(fanoutFork.AreaName)
+	routeMissingIdentName := inst.makeRouteMissingIdentName(fanoutFork.AreaName)
 	subRoutingCode := inst.generateSubForkFanoutCode(fanoutFork, fanoutFork.CoveredTerminals)
 	result = makeCodeBlockGetParameter(inst.NamePrefix, routeMissingIdentName, fanoutFork.SequenceVarName, seqPart.VariableType, extractFuncName, fanoutFork.BaseOffset, subRoutingCode)
 	return
@@ -409,7 +409,7 @@ func (inst *CodeGenerateInstance) generateInvokeHandler(fanoutFork *FanoutFork) 
 		result = result + ", " + paramName
 	}
 	result += ")\n"
-	result += "return " + inst.makeRouteIdentName(handlerName) + ", nil"
+	result += "return " + inst.makeRouteTargetIdentName(handlerName) + ", nil"
 	return
 }
 
