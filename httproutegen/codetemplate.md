@@ -303,6 +303,21 @@ if paramName, reqPathOffset, err = extractParameterFunction(reqPath, reqPathOffs
 InvokeRoutingLogic()
 ```
 
+# Invoke without Match Method
+
+* `builder`: `makeCodeBlockNoMatchMethodForInvoke`, `routePrefix string`
+* `preserve-new-line`
+* `replace`:
+  - ``` (RouteError) ```
+  - `$1`
+  - ``` (routePrefix + "RouteError") ```
+
+```go
+http.Error(w, "not allow", http.StatusMethodNotAllowed)
+return RouteError, nil
+```
+
+
 # Extract Function (^\ => string, no-converter)
 
 * `const`: `codeMethodExtractStringBuiltInR01NoSlash`
