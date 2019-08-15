@@ -420,7 +420,7 @@ func (inst *CodeGenerateInstance) generateInvokeHandler(fanoutFork *FanoutFork) 
 			result += "fallthrough\n"
 		} else {
 			handlerName := invokeProfile.HandlerName
-			result = fmt.Sprintf("%s.%s(w, req, reqPathOffset%s",
+			result += fmt.Sprintf("%s.%s(w, req, reqPathOffset%s",
 				inst.ReceiverName,
 				handlerName,
 				codeTemplateGenIntPlus(fanoutFork.BaseOffset))
