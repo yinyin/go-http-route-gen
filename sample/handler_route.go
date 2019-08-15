@@ -168,8 +168,15 @@ func (h *sampleHandler) routeRequest(w http.ResponseWriter, req *http.Request) (
 				if productName, reqPathOffset, err = extractStringRxSeq000(reqPath, reqPathOffset+6, reqPathBound); nil != err {
 					return RouteError, err
 				}
-				h.queryProduct(w, req, reqPathOffset, productName)
-				return RouteToQueryProduct, nil
+				switch req.Method {
+				case http.MethodGet:
+					fallthrough
+				case http.MethodPost:
+					h.queryProduct(w, req, reqPathOffset, productName)
+					return RouteToQueryProduct, nil
+				}
+				http.Error(w, "not allow", http.StatusMethodNotAllowed)
+				return RouteError, nil
 			} else if ch == 0x64 {
 				var sessionId int64
 				if sessionId, reqPathOffset, err = extractInt64BuiltInR02(reqPath, reqPathOffset+9, reqPathBound); nil != err {
@@ -179,22 +186,37 @@ func (h *sampleHandler) routeRequest(w http.ResponseWriter, req *http.Request) (
 				if targetId, reqPathOffset, err = extractInt64BuiltInR02(reqPath, reqPathOffset+1, reqPathBound); nil != err {
 					return RouteError, err
 				}
-				h.downloadProduct(w, req, reqPathOffset, sessionId, targetId)
-				return RouteToDownloadProduct, nil
+				switch req.Method {
+				case http.MethodGet:
+					h.downloadProduct(w, req, reqPathOffset, sessionId, targetId)
+					return RouteToDownloadProduct, nil
+				}
+				http.Error(w, "not allow", http.StatusMethodNotAllowed)
+				return RouteError, nil
 			} else if ch == 0x6e {
 				if reqPathOffset = reqPathOffset + 13; reqPathOffset >= reqPathBound {
 					return RouteMissSampleAdmin, nil
 				}
 				if ch := reqPath[reqPathOffset]; ch == 0x73 {
-					h.listProducts(w, req, reqPathOffset+1)
-					return RouteToListProducts, nil
+					switch req.Method {
+					case http.MethodGet:
+						h.listProducts(w, req, reqPathOffset+1)
+						return RouteToListProducts, nil
+					}
+					http.Error(w, "not allow", http.StatusMethodNotAllowed)
+					return RouteError, nil
 				} else if ch == 0x2f {
 					var productId int64
 					if productId, reqPathOffset, err = extractInt64BuiltInR02(reqPath, reqPathOffset+1, reqPathBound); nil != err {
 						return RouteMissSampleAdmin, err
 					}
-					h.showProduct(w, req, reqPathOffset, productId)
-					return RouteToShowProduct, nil
+					switch req.Method {
+					case http.MethodGet:
+						h.showProduct(w, req, reqPathOffset, productId)
+						return RouteToShowProduct, nil
+					}
+					http.Error(w, "not allow", http.StatusMethodNotAllowed)
+					return RouteError, nil
 				}
 				return RouteMissSampleAdmin, nil
 			}
@@ -202,18 +224,33 @@ func (h *sampleHandler) routeRequest(w http.ResponseWriter, req *http.Request) (
 			if digest32, reqPathOffset, err = computePrefixMatchingDigest32(reqPath, reqPathOffset, reqPathBound, 3); nil != err {
 				return RouteError, err
 			} else if digest32 == 0x617461 {
-				h.sampleData(w, req, reqPathOffset)
-				return RouteToSampleData, nil
+				switch req.Method {
+				case http.MethodGet:
+					h.sampleData(w, req, reqPathOffset)
+					return RouteToSampleData, nil
+				}
+				http.Error(w, "not allow", http.StatusMethodNotAllowed)
+				return RouteError, nil
 			} else if digest32 == 0x656275 {
 				if reqPathOffset = reqPathOffset + 2; reqPathOffset >= reqPathBound {
 					return RouteIncomplete, nil
 				}
 				if ch := reqPath[reqPathOffset]; ch == 0x74 {
-					h.debugText(w, req, reqPathOffset+4)
-					return RouteToDebugText, nil
+					switch req.Method {
+					case http.MethodGet:
+						h.debugText(w, req, reqPathOffset+4)
+						return RouteToDebugText, nil
+					}
+					http.Error(w, "not allow", http.StatusMethodNotAllowed)
+					return RouteError, nil
 				} else if ch == 0x6a {
-					h.debugJSON(w, req, reqPathOffset+4)
-					return RouteToDebugJSON, nil
+					switch req.Method {
+					case http.MethodGet:
+						h.debugJSON(w, req, reqPathOffset+4)
+						return RouteToDebugJSON, nil
+					}
+					http.Error(w, "not allow", http.StatusMethodNotAllowed)
+					return RouteError, nil
 				}
 			}
 		} else if digest32 == 0x6c652d65 {
@@ -226,8 +263,13 @@ func (h *sampleHandler) routeRequest(w http.ResponseWriter, req *http.Request) (
 					if digest32, reqPathOffset, err = computePrefixMatchingDigest32(reqPath, reqPathOffset, reqPathBound, 1); nil != err {
 						return RouteError, err
 					} else if digest32 == 0x74 {
-						h.exactText(w, req, reqPathOffset)
-						return RouteToExactText, nil
+						switch req.Method {
+						case http.MethodGet:
+							h.exactText(w, req, reqPathOffset)
+							return RouteToExactText, nil
+						}
+						http.Error(w, "not allow", http.StatusMethodNotAllowed)
+						return RouteError, nil
 					}
 				}
 			}
@@ -248,8 +290,13 @@ func (h *sampleHandler) routeRequest(w http.ResponseWriter, req *http.Request) (
 			if hex2, reqPathOffset, err = extractUInt32BuiltInR03(reqPath, reqPathOffset+1, reqPathBound); nil != err {
 				return RouteMissDebugSample, err
 			}
-			h.debugNumber(w, req, reqPathOffset, num, hex1, hex2)
-			return RouteToDebugNumber, nil
+			switch req.Method {
+			case http.MethodGet:
+				h.debugNumber(w, req, reqPathOffset, num, hex1, hex2)
+				return RouteToDebugNumber, nil
+			}
+			http.Error(w, "not allow", http.StatusMethodNotAllowed)
+			return RouteError, nil
 		}
 		return RouteMissDebugSample, nil
 	} else if digest32 == 0x756e6971 {
@@ -261,15 +308,25 @@ func (h *sampleHandler) routeRequest(w http.ResponseWriter, req *http.Request) (
 			if num, reqPathOffset, err = extractInt32BuiltInR02(reqPath, reqPathOffset+5, reqPathBound); nil != err {
 				return RouteError, err
 			}
-			h.uniqueText(w, req, reqPathOffset, num)
-			return RouteToUniqueText, nil
+			switch req.Method {
+			case http.MethodGet:
+				h.uniqueText(w, req, reqPathOffset, num)
+				return RouteToUniqueText, nil
+			}
+			http.Error(w, "not allow", http.StatusMethodNotAllowed)
+			return RouteError, nil
 		} else if ch == 0x6a {
 			var num int32
 			if num, reqPathOffset, err = extractInt32BuiltInR02(reqPath, reqPathOffset+5, reqPathBound); nil != err {
 				return RouteError, err
 			}
-			h.uniqueJSON(w, req, reqPathOffset, num)
-			return RouteToUniqueJSON, nil
+			switch req.Method {
+			case http.MethodGet:
+				h.uniqueJSON(w, req, reqPathOffset, num)
+				return RouteToUniqueJSON, nil
+			}
+			http.Error(w, "not allow", http.StatusMethodNotAllowed)
+			return RouteError, nil
 		}
 	}
 	return RouteNone, nil
