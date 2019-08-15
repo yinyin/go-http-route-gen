@@ -1,6 +1,7 @@
 package httproutegen
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"strings"
@@ -58,7 +59,7 @@ func (hn *HandlerNames) rebuildInvokeOrder() {
 	evalOrder = append(evalOrder, defaultMethodEvaluateOrder...)
 	checkedStat := make(map[string]bool)
 	var resultEvalOrder []string
-	var invokeProdiles []*HandlerInvokeProfile
+	var invokeProfiles []*HandlerInvokeProfile
 	for _, methodName := range evalOrder {
 		methodName = strings.ToUpper(methodName)
 		chk := checkedStat[methodName]
@@ -73,11 +74,19 @@ func (hn *HandlerNames) rebuildInvokeOrder() {
 				RequestMethod: methodName,
 				HandlerName:   n,
 			}
-			invokeProdiles = append(invokeProdiles, aux)
+			invokeProfiles = append(invokeProfiles, aux)
+		}
+	}
+	for idx, profile := range invokeProfiles {
+		if (idx + 1) >= len(invokeProfiles) {
+			break
+		}
+		if profile.HandlerName == invokeProfiles[idx+1].HandlerName {
+			profile.SameNext = true
 		}
 	}
 	hn.EvaluateOrder = resultEvalOrder
-	hn.InvokeProfiles = invokeProdiles
+	hn.InvokeProfiles = invokeProfiles
 }
 
 func (hn *HandlerNames) expandHandlerName(n string) (string, bool) {
@@ -134,15 +143,29 @@ func (hn *HandlerNames) expandNames() {
 }
 
 func (hn *HandlerNames) cleanup() {
+	if nil == hn {
+		return
+	}
 	hn.expandNames()
 	hn.rebuildInvokeOrder()
 }
 
 func (hn *HandlerNames) isEmpty() bool {
+	if nil == hn {
+		return true
+	}
 	for _, m := range defaultMethodEvaluateOrder {
 		if n := hn.getHandlerNameByMethod(m); n != "" {
 			return false
 		}
 	}
 	return true
+}
+
+func (hn *HandlerNames) String() string {
+	t, err := json.Marshal(hn)
+	if nil != err {
+		return err.Error()
+	}
+	return string(t)
 }
