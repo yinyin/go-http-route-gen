@@ -122,6 +122,12 @@ func makeCodeBlockGetParameter(routePrefix string, routeMissingIdent string, par
 		"\n"
 }
 
+func makeCodeBlockNoMatchMethodForInvoke(routePrefix string) string {
+	return "http.Error(w, \"not allow\", http.StatusMethodNotAllowed)\n" +
+		"return " + (routePrefix + "RouteError") + ", nil\n" +
+		"\n"
+}
+
 const codeMethodExtractStringBuiltInR01NoSlash = "func extractStringBuiltInR01NoSlash(v string, offset, bound int) (string, int, error) {\n" +
 	"\tvar buf []byte\n" +
 	"\tfor idx := offset; idx < bound; idx++ {\n" +
