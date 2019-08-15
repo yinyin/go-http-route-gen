@@ -18,7 +18,7 @@ type RouteEntry struct {
 	Ident             string        `yaml:"-" json:"component_ident,omitempty"`
 	Component         string        `yaml:"c,omitempty" json:"c,omitempty"`
 	AreaName          string        `yaml:"area,omitempty" json:"area,omitempty"`
-	HandlerName       string        `yaml:"handler,omitempty" json:"handler,omitempty"`
+	HandlerProfile    *HandlerNames `yaml:"handler,omitempty" json:"handler,omitempty"`
 	StrictPrefixMatch string        `yaml:"strict-prefix-match,omitempty" json:"strict_prefix_match,omitempty"`
 	StrictMatch       bool          `yaml:"strict-match,omitempty" json:"strict_match,omitempty"`
 	TrailingSlash     bool          `yaml:"trailing-slash,omitempty" json:"trailing_slash,omitempty"`
@@ -38,7 +38,7 @@ func (entry *RouteEntry) makeComponentIdent(parentComponentIdent string) string 
 func (entry *RouteEntry) cleanupComponent(parentComponentIdent string) error {
 	entry.Component = strings.TrimFunc(entry.Component, shouldTrimFromComponent)
 	if ("" == entry.Component) && ("" != parentComponentIdent) {
-		return errors.New("empty component: parent=[" + parentComponentIdent + "], handler=[" + entry.HandlerName + "]")
+		return errors.New("empty component: parent=[" + parentComponentIdent + "], handler=[" + entry.HandlerProfile.String() + "]")
 	}
 	return nil
 }
@@ -73,12 +73,14 @@ func (entry *RouteEntry) verifyConfiguration(parentComponentIdent, parentAreaNam
 			Message:   "partial-strict-match and fully-strict-match cannot co-exist",
 		}
 	}
-	if "" == entry.HandlerName {
+	entry.HandlerProfile.cleanup()
+	if entry.HandlerProfile.isEmpty() {
+		entry.HandlerProfile = nil
 		if entry.TrailingSlash {
 			return &ErrConflictConfiguration{
 				Component: componentIdent,
 				Config1:   "trailing-slash=true",
-				Config2:   "handler=" + entry.HandlerName,
+				Config2:   "handler=" + entry.HandlerProfile.String(),
 				Message:   "enabling trailing-slash on terminate component only",
 			}
 		}
@@ -86,7 +88,7 @@ func (entry *RouteEntry) verifyConfiguration(parentComponentIdent, parentAreaNam
 			return &ErrConflictConfiguration{
 				Component: componentIdent,
 				Config1:   "terminate-component=true",
-				Config2:   "handler=" + entry.HandlerName,
+				Config2:   "handler=" + entry.HandlerProfile.String(),
 				Message:   "require handler at terminate component",
 			}
 		}
