@@ -100,6 +100,7 @@ func (h *localHandler) routeRequest(w http.ResponseWriter, req *http.Request) (R
 		return RouteNone, nil
 	}
 	var err error
+	_ = err
 	InvokeRoutingLogic()
 	return RouteNone, nil
 }
