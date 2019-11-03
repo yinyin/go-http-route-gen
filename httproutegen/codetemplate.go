@@ -40,6 +40,7 @@ func makeCodeMethodRouteEnterance(routePrefix string, receiverName string, handl
 		"\t\treturn " + (routePrefix + "RouteNone") + ", nil\n" +
 		"\t}\n" +
 		"\tvar err error\n" +
+		"\t_ = err\n" +
 		(routingLogicCode) + "\n" +
 		"\treturn " + (routePrefix + "RouteNone") + ", nil\n" +
 		"}\n" +
