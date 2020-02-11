@@ -50,12 +50,13 @@ type RouteIdent int
 ```go
 // Route identifiers.
 const (
-	RouteNone RouteIdent = iota
-	RouteIncomplete
-    RouteError
-    RouteMissingCoveredArea
-	RouteSuccess
-	RouteToTargetHandler
+  RouteNone RouteIdent = iota
+  RouteIncomplete
+  RouteMethodNotAllowed
+  RouteError
+  RouteMissingCoveredArea
+  RouteSuccess
+  RouteToTargetHandler
 )
 ```
 
@@ -309,13 +310,13 @@ InvokeRoutingLogic()
 * `builder`: `makeCodeBlockNoMatchMethodForInvoke`, `routePrefix string`
 * `preserve-new-line`
 * `replace`:
-  - ``` (RouteError) ```
+  - ``` (RouteMethodNotAllowed) ```
   - `$1`
-  - ``` (routePrefix + "RouteError") ```
+  - ``` (routePrefix + "RouteMethodNotAllowed") ```
 
 ```go
 http.Error(w, "not allow", http.StatusMethodNotAllowed)
-return RouteError, nil
+return RouteMethodNotAllowed, nil
 ```
 
 
