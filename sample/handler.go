@@ -76,6 +76,8 @@ func (h *sampleHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		return
 	} else if routedIdent > RouteSuccess {
 		return
+	} else if routedIdent == RouteMethodNotAllowed {
+		return
 	}
 	h.responseText(w, req, 0, "Last route")
 }
