@@ -14,6 +14,7 @@ type RouteIdent int
 const (
 	RouteNone RouteIdent = iota
 	RouteIncomplete
+	RouteMethodNotAllowed
 	RouteError
 	RouteMissSampleAdmin
 	RouteMissDebugSample
@@ -153,6 +154,7 @@ func (h *sampleHandler) routeRequest(w http.ResponseWriter, req *http.Request) (
 		return RouteNone, nil
 	}
 	var err error
+	_ = err
 	var digest32 uint32
 	if digest32, reqPathOffset, err = computePrefixMatchingDigest32(reqPath, reqPathOffset, reqPathBound, 4); nil != err {
 		return RouteError, err
@@ -176,7 +178,7 @@ func (h *sampleHandler) routeRequest(w http.ResponseWriter, req *http.Request) (
 					return RouteToQueryProduct, nil
 				}
 				http.Error(w, "not allow", http.StatusMethodNotAllowed)
-				return RouteError, nil
+				return RouteMethodNotAllowed, nil
 			} else if ch == 0x64 {
 				var sessionId int64
 				if sessionId, reqPathOffset, err = extractInt64BuiltInR02(reqPath, reqPathOffset+9, reqPathBound); nil != err {
@@ -192,7 +194,7 @@ func (h *sampleHandler) routeRequest(w http.ResponseWriter, req *http.Request) (
 					return RouteToDownloadProduct, nil
 				}
 				http.Error(w, "not allow", http.StatusMethodNotAllowed)
-				return RouteError, nil
+				return RouteMethodNotAllowed, nil
 			} else if ch == 0x6e {
 				if reqPathOffset = reqPathOffset + 13; reqPathOffset >= reqPathBound {
 					return RouteMissSampleAdmin, nil
@@ -204,7 +206,7 @@ func (h *sampleHandler) routeRequest(w http.ResponseWriter, req *http.Request) (
 						return RouteToListProducts, nil
 					}
 					http.Error(w, "not allow", http.StatusMethodNotAllowed)
-					return RouteError, nil
+					return RouteMethodNotAllowed, nil
 				} else if ch == 0x2f {
 					var productId int64
 					if productId, reqPathOffset, err = extractInt64BuiltInR02(reqPath, reqPathOffset+1, reqPathBound); nil != err {
@@ -216,7 +218,7 @@ func (h *sampleHandler) routeRequest(w http.ResponseWriter, req *http.Request) (
 						return RouteToShowProduct, nil
 					}
 					http.Error(w, "not allow", http.StatusMethodNotAllowed)
-					return RouteError, nil
+					return RouteMethodNotAllowed, nil
 				}
 				return RouteMissSampleAdmin, nil
 			}
@@ -230,7 +232,7 @@ func (h *sampleHandler) routeRequest(w http.ResponseWriter, req *http.Request) (
 					return RouteToSampleData, nil
 				}
 				http.Error(w, "not allow", http.StatusMethodNotAllowed)
-				return RouteError, nil
+				return RouteMethodNotAllowed, nil
 			} else if digest32 == 0x656275 {
 				if reqPathOffset = reqPathOffset + 2; reqPathOffset >= reqPathBound {
 					return RouteIncomplete, nil
@@ -242,7 +244,7 @@ func (h *sampleHandler) routeRequest(w http.ResponseWriter, req *http.Request) (
 						return RouteToDebugText, nil
 					}
 					http.Error(w, "not allow", http.StatusMethodNotAllowed)
-					return RouteError, nil
+					return RouteMethodNotAllowed, nil
 				} else if ch == 0x6a {
 					switch req.Method {
 					case http.MethodGet:
@@ -250,7 +252,7 @@ func (h *sampleHandler) routeRequest(w http.ResponseWriter, req *http.Request) (
 						return RouteToDebugJSON, nil
 					}
 					http.Error(w, "not allow", http.StatusMethodNotAllowed)
-					return RouteError, nil
+					return RouteMethodNotAllowed, nil
 				}
 			}
 		} else if digest32 == 0x6c652d65 {
@@ -269,7 +271,7 @@ func (h *sampleHandler) routeRequest(w http.ResponseWriter, req *http.Request) (
 							return RouteToExactText, nil
 						}
 						http.Error(w, "not allow", http.StatusMethodNotAllowed)
-						return RouteError, nil
+						return RouteMethodNotAllowed, nil
 					}
 				}
 			}
@@ -296,7 +298,7 @@ func (h *sampleHandler) routeRequest(w http.ResponseWriter, req *http.Request) (
 				return RouteToDebugNumber, nil
 			}
 			http.Error(w, "not allow", http.StatusMethodNotAllowed)
-			return RouteError, nil
+			return RouteMethodNotAllowed, nil
 		}
 		return RouteMissDebugSample, nil
 	} else if digest32 == 0x756e6971 {
@@ -314,7 +316,7 @@ func (h *sampleHandler) routeRequest(w http.ResponseWriter, req *http.Request) (
 				return RouteToUniqueText, nil
 			}
 			http.Error(w, "not allow", http.StatusMethodNotAllowed)
-			return RouteError, nil
+			return RouteMethodNotAllowed, nil
 		} else if ch == 0x6a {
 			var num int32
 			if num, reqPathOffset, err = extractInt32BuiltInR02(reqPath, reqPathOffset+5, reqPathBound); nil != err {
@@ -326,7 +328,7 @@ func (h *sampleHandler) routeRequest(w http.ResponseWriter, req *http.Request) (
 				return RouteToUniqueJSON, nil
 			}
 			http.Error(w, "not allow", http.StatusMethodNotAllowed)
-			return RouteError, nil
+			return RouteMethodNotAllowed, nil
 		}
 	}
 	return RouteNone, nil

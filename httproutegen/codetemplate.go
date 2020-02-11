@@ -14,11 +14,12 @@ func makeCodeTypeRouteIdent(routePrefix string) string {
 func makeCodeConstRouteIdent(routePrefix string, coveredAreaRouteIdents []string, targetHandlerRouteIdents []string) string {
 	return "// Route identifiers.\n" +
 		"const (\n" +
-		"\t" + (routePrefix + "RouteNone " + routePrefix + "RouteIdent") + " = iota\n" +
-		"\t" + (routePrefix + "Route") + "Incomplete\n" +
-		"    " + (routePrefix + "Route") + "Error\n" +
+		"  " + (routePrefix + "RouteNone " + routePrefix + "RouteIdent") + " = iota\n" +
+		"  " + (routePrefix + "Route") + "Incomplete\n" +
+		"  " + (routePrefix + "Route") + "MethodNotAllowed\n" +
+		"  " + (routePrefix + "Route") + "Error\n" +
 		(strings.Join(coveredAreaRouteIdents, "\n")) + "\n" +
-		"\t" + (routePrefix + "Route") + "Success\n" +
+		"  " + (routePrefix + "Route") + "Success\n" +
 		(strings.Join(targetHandlerRouteIdents, "\n")) + "\n" +
 		")\n" +
 		"\n"
@@ -125,7 +126,7 @@ func makeCodeBlockGetParameter(routePrefix string, routeMissingIdent string, par
 
 func makeCodeBlockNoMatchMethodForInvoke(routePrefix string) string {
 	return "http.Error(w, \"not allow\", http.StatusMethodNotAllowed)\n" +
-		"return " + (routePrefix + "RouteError") + ", nil\n" +
+		"return " + (routePrefix + "RouteMethodNotAllowed") + ", nil\n" +
 		"\n"
 }
 
